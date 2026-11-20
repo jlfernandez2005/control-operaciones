@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3a8a">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/styles.css">
+<title>Control de Operaciones · La Salle</title>
+</head>
+<body>
+
+<div id="login-view" class="login-wrap hidden">
+  <div class="login-card">
+    <h1 style="text-align:center">Control de Operaciones</h1>
+    <div style="text-align:center;color:var(--mut);font-size:12px;margin-bottom:18px">La Salle Lima</div>
+    <form id="login-form">
+      <div class="field"><label for="l-company">Código de empresa</label><input id="l-company" value="LSALLE" required></div>
+      <div class="field"><label for="l-user">Usuario</label><input id="l-user" autocomplete="username" required></div>
+      <div class="field"><label for="l-pass">Contraseña</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
+      <button class="btn block" type="submit">Ingresar</button>
+      <div id="l-msg" class="msg"></div>
+      <div style="text-align:right;margin-top:8px"><button type="button" class="link" id="go-recover">¿Olvidaste tu contraseña?</button></div>
+    </form>
+    <form id="firstpass-form" class="hidden">
+      <div class="field"><label for="fp-pass">Nueva contraseña</label><input id="fp-pass" type="password" required minlength="6"></div>
+      <div class="field"><label for="fp-q">Pregunta de seguridad</label><input id="fp-q"></div>
+      <div class="field"><label for="fp-a">Respuesta</label><input id="fp-a"></div>
+      <button class="btn block" type="submit">Guardar y entrar</button>
+      <div id="fp-msg" class="msg"></div>
+    </form>
+    <form id="recover-form" class="hidden">
+      <div class="field"><label for="r-company">Código de empresa</label><input id="r-company" value="LSALLE" required></div>
+      <div class="field"><label for="r-user">Usuario</label><input id="r-user" required></div>
+      <div class="field"><label for="r-ans">Respuesta de seguridad</label><input id="r-ans" required></div>
+      <div class="field"><label for="r-new">Nueva contraseña</label><input id="r-new" type="password" required minlength="6"></div>
+      <button class="btn block" type="submit">Recuperar</button>
+      <div id="r-msg2" class="msg"></div>
+      <button type="button" class="link" id="go-login">Volver</button>
+    </form>
+  </div>
+</div>
+
+<div id="app-view" class="hidden">
+<header class="top">
+  <div class="top-in">
+    <div class="brand">Control de Operaciones</div>
+    <div class="spacer"></div>
+    <div class="userbox">
+      <div class="avatar" id="avatar">A</div>
+      <div><div id="u-name" style="font-weight:700">—</div><div class="role" id="u-role">—</div></div>
+      <button class="icon-btn" id="btn-theme">◐</button>
+      <button class="icon-btn" id="btn-logout">Salir</button>
+    </div>
+  </div>
+</header>
+<div class="w">
+<nav class="tabs" id="nav">
+  <button data-t="dash" aria-selected="true">Inicio</button>
+  <button data-t="reg" aria-selected="false">Registro</button>
+  <button data-t="res" aria-selected="false">Resumen</button>
+  <button data-t="prv" aria-selected="false">Proveedores</button>
+  <button data-t="cc" aria-selected="false">Caja chica</button>
+  <button data-t="usr" aria-selected="false" id="tab-usr" style="display:none">Usuarios</button>
+  <button data-t="aud" aria-selected="false" id="tab-aud" style="display:none">Auditoría</button>
+</nav>
+
+<section class="sec on" id="t-dash">
+  <div class="k" id="d-k"></div>
+  <div class="card"><h2>Accesos rápidos</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="document.querySelector('#nav button[data-t=reg]').click()">+ Nueva operación</button>
+      <button class="btn g" id="d-export-all">Exportar todo</button>
+    </div>
+  </div>
+  <div class="card"><h2>Últimas operaciones</h2><div class="sc"><table><tbody id="d-recent"></tbody></table></div></div>
+</section>
+
+<section class="sec" id="t-reg">
+  <div class="card"><h2>Nueva operación</h2>
+    <div class="f">
+      <div><label for="r-f">Fecha</label><input type="date" id="r-f"></div>
+      <div style="grid-column:span 2"><label for="r-c">Concepto</label><input id="r-c"></div>
+      <div style="grid-column:span 2"><label for="r-p">Comprobante</label><input id="r-p"></div>
+      <div><label for="r-m">Monto</label><input type="number" step="0.01" id="r-m"></div>
+      <div><label for="r-r">RUC / DNI</label><input id="r-r" list="dl"></div>
+      <div><label for="r-e">Estado</label><select id="r-e"><option>Pendiente</option><option>Pagado</option></select></div>
+      <div><label for="r-b">Banco</label><select id="r-b"><option>Scotiabank</option><option>Interbank</option></select></div>
+      <div><label for="r-t">Tipo</label><select id="r-t"><option>General</option><option>Talleres</option><option>SUNAT</option></select></div>
+      <div><button class="btn" id="r-add">Agregar</button></div>
+    </div>
+    <datalist id="dl"></datalist>
+    <div id="r-msg" class="msg"></div>
+  </div>
+  <div class="card"><h2>Operaciones</h2>
+    <div class="sc"><table><thead><tr><th>ID</th><th>Fecha</th><th>Concepto</th><th>Comprobante</th><th>Monto</th><th>CCI</th><th>Proveedor</th><th>Banco</th><th>Tipo</th><th>Estado</th><th>Firma</th><th></th></tr></thead><tbody id="r-tb"></tbody></table></div>
+  </div>
+</section>
+
+<section class="sec" id="t-res">
+  <div class="card"><h2>Resumen mensual</h2><input type="month" id="m-m" style="max-width:200px"></div>
+  <div class="k" id="m-k"></div>
+</section>
+
+<section class="sec" id="t-prv">
+  <div class="card"><h2>Nuevo proveedor</h2>
+    <div class="f">
+      <div><label for="v-r">RUC / DNI</label><input id="v-r"></div>
+      <div style="grid-column:span 2"><label for="v-n">Nombre</label><input id="v-n"></div>
+      <div style="grid-column:span 2"><label for="v-c">CCI</label><input id="v-c"></div>
+      <div style="grid-column:span 2"><label for="v-t">Titular (opcional)</label><input id="v-t"></div>
+      <div><button class="btn" id="v-add">Guardar</button></div>
+    </div>
+    <div id="v-msg" class="msg"></div>
+  </div>
+  <div class="card"><div class="sc"><table><thead><tr><th>RUC</th><th>Nombre</th><th>Titular</th><th>CCI</th><th>Banco</th><th>Estado</th><th></th></tr></thead><tbody id="v-tb"></tbody></table></div></div>
+</section>
+
+<section class="sec" id="t-cc">
+  <div class="card"><h2>Caja chica</h2>
+    <div class="f"><div><label for="c-sel">Seleccionar</label><select id="c-sel"></select></div><div><button class="btn" id="c-new">Nueva</button></div></div>
+  </div>
+  <div id="c-rp"></div>
+</section>
+
+<section class="sec" id="t-usr">
+  <div class="card"><h2>Nuevo usuario</h2>
+    <div class="f">
+      <div><label for="nu-user">Usuario</label><input id="nu-user"></div>
+      <div><label for="nu-name">Nombre</label><input id="nu-name"></div>
+      <div><label for="nu-role">Rol</label><select id="nu-role"><option value="editor">Editor</option><option value="lector">Lector</option><option value="admin">Admin</option></select></div>
+      <div><label for="nu-pass">Contraseña</label><input id="nu-pass" type="password"></div>
+      <div><button class="btn" id="nu-add">Crear</button></div>
+    </div>
+    <div id="nu-msg" class="msg"></div>
+  </div>
+  <div class="card"><div class="sc"><table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Debe cambiar</th><th></th></tr></thead><tbody id="usr-tb"></tbody></table></div></div>
+</section>
+
+<section class="sec" id="t-aud">
+  <div class="card">
+    <h2>Auditoría</h2>
+    <div class="f">
+      <div><label for="a-action">Acción</label>
+        <select id="a-action">
+          <option value="">Todas</option>
+          <option value="login">login</option>
+          <option value="logout">logout</option>
+          <option value="create">create</option>
+          <option value="update">update</option>
+          <option value="delete">delete</option>
+          <option value="status">status</option>
+          <option value="change_password">change_password</option>
+        </select>
+      </div>
+      <div><label for="a-entity">Entidad</label>
+        <select id="a-entity">
+          <option value="">Todas</option>
+          <option value="auth">auth</option>
+          <option value="op">op</option>
+          <option value="provider">provider</option>
+          <option value="cc">cc</option>
+          <option value="cc_item">cc_item</option>
+          <option value="user">user</option>
+        </select>
+      </div>
+      <div><label for="a-from">Desde</label><input type="date" id="a-from"></div>
+      <div><label for="a-to">Hasta</label><input type="date" id="a-to"></div>
+      <div style="display:flex;gap:6px;align-items:end">
+        <button class="btn" id="a-filter">Filtrar</button>
+        <button class="btn g" id="a-export">Exportar CSV</button>
+      </div>
+    </div>
+    <div id="a-msg" class="msg"></div>
+  </div>
+  <div class="card">
+    <div class="sc">
+      <table>
+        <thead><tr><th>ID</th><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>ID</th><th>IP</th><th>Payload</th></tr></thead>
+        <tbody id="a-tb"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <button class="btn g" id="a-prev">← Anterior</button>
+      <span id="a-page" style="font-size:12px;color:var(--mut)"></span>
+      <button class="btn g" id="a-next">Siguiente →</button>
+    </div>
+  </div>
+</section>
+</div>
+</div>
+
+<div id="ts" class="toast"></div>
+
+<script src="/app-core.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
