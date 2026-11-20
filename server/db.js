@@ -34,3 +34,6 @@ export async function seed() {
   }
   console.log('[seed] Listo');
 }
+
+if (process.argv.includes('--init')) { initSchema().then(() => console.log('BD Lista')); }
+if (process.argv.includes('--seed')) { initSchema().then(seed).then(() => console.log('Seed Listo')); }
