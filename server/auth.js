@@ -27,9 +27,14 @@ export function roleRequired(...roles) {
 }
 
 export async function checkPassword(username, password, companyId) {
-  const u = db.prepare('SELECT * FROM users WHERE company_id=? AND username=? AND active=1').get(companyId, username);
+  const result = await db.execute({ 
+    sql: 'SELECT * FROM users WHERE company_id=? AND username=? AND active=1', 
+    args: [companyId, username] 
+  });
+  const u = result.rows[0];
   if (!u) return null;
   const ok = await bcrypt.compare(password, u.pass_hash);
   return ok ? u : null;
 }
+
 export async function hashPassword(password) { return bcrypt.hash(password, 10); }
