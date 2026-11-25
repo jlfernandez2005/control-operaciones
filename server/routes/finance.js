@@ -7,6 +7,7 @@ import {audit} from '../audit.js';
 import {date,money,text,optionalText,validate} from '../validation.js';
 import {categories,suggestCategory,isTotal,dims,groupsFor,normalize,fingerprint} from '../finance-core.js';
 import {financeWorker} from '../finance-worker.js';
+import {reconcileCash} from '../cash-reconcile.js';
 const r=express.Router();r.use(authRequired);
 const editor=roleRequired('admin','editor');
 const optionalDoc=z.union([z.literal(''),z.string().regex(/^(\d{8}|\d{11})$/)]).default('');
@@ -34,14 +35,14 @@ r.post('/import',editor,async(req,res)=>{
 const cashHeader=z.object({num:text(50),resp:text(200),area:optionalText(200),ord:optionalText(200),from_date:date,to_date:date,fund:money,report_date:date.or(z.literal('')).optional().default(''),declared_from_date:date.optional(),declared_to_date:date.optional()}).refine(x=>x.from_date<=x.to_date,'Rango inválido');
 const cashRow=z.object({date,concept:text(500).refine(s=>!isTotal(s),'No se admiten totales'),amount:money,ruc:optionalText(20),receipt:optionalText(200),provider:optionalText(200),category:text(100),source_category:optionalText(100),usd:money.nullish(),reference:text(300)});
 r.post('/import-cash',editor,async(req,res)=>{
- const b=validate(z.object({name:text(200),digest:z.string().regex(/^[a-f0-9]{64}$/),meta:cashHeader,declaredTotal:money.nullish(),rows:z.array(cashRow).min(1).max(500)}),req,res);if(!b)return;
+ const b=validate(z.object({name:text(200),digest:z.string().regex(/^[a-f0-9]{64}$/),meta:cashHeader,declaredTotal:money.nullish(),correctedTotal:money.nullish(),correctionNote:optionalText(500),originalFund:z.number().finite().min(0).max(999999999).nullish(),rows:z.array(cashRow).min(1).max(500)}),req,res);if(!b)return;
  const cid=req.user.cid,uid=req.user.uid,batch=crypto.randomUUID(),h=b.meta;
- if(b.declaredTotal!=null&&b.rows.reduce((sum,x)=>sum+Math.round(x.amount*100),0)!==Math.round(b.declaredTotal*100))return res.status(400).json({error:'El total de los gastos no coincide con el total impreso informado.'});
+ const reconciliation=reconcileCash(b);if(reconciliation.error)return res.status(400).json({error:reconciliation.error});
  if(b.rows.some(x=>x.date<h.from_date||x.date>h.to_date))return res.status(400).json({error:'Hay gastos fuera del periodo de caja.'});
  const stmts=[{sql:`INSERT INTO petty_cash(company_id,num,resp,area,ord,from_date,to_date,fund,import_batch,report_date,source_file) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM petty_cash WHERE company_id=? AND lower(trim(num))=lower(trim(?)))`,args:[cid,h.num,h.resp,h.area,h.ord,h.from_date,h.to_date,h.fund,batch,h.report_date||null,b.name,cid,h.num]}];
  for(const x of b.rows)stmts.push({sql:`INSERT INTO petty_items(cc_id,date,ruc,provider,receipt,category,detail,amount,usd,source_ref,source_category) SELECT id,?,?,?,?,?,?,?,?,?,? FROM petty_cash WHERE company_id=? AND import_batch=?`,args:[x.date,x.ruc,x.provider,x.receipt,x.category,x.concept,x.amount,x.usd??null,x.reference,x.source_category,cid,batch]});
  stmts.push({sql:`INSERT INTO import_batches(id,company_id,user_id,filename,digest,submitted,inserted) SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM petty_cash WHERE company_id=? AND import_batch=?)`,args:[batch,cid,uid,b.name,b.digest,b.rows.length,b.rows.length,cid,batch]});
- stmts.push({sql:`INSERT INTO audit(company_id,user_id,action,entity,payload) SELECT ?,?,'import','cc',? WHERE EXISTS(SELECT 1 FROM petty_cash WHERE company_id=? AND import_batch=?)`,args:[cid,uid,JSON.stringify({batch,num:h.num,submitted:b.rows.length,declaredTotal:b.declaredTotal,declaredPeriod:h.declared_from_date?[h.declared_from_date,h.declared_to_date]:null,period:[h.from_date,h.to_date]}),cid,batch]});
+ stmts.push({sql:`INSERT INTO audit(company_id,user_id,action,entity,payload) SELECT ?,?,'import','cc',? WHERE EXISTS(SELECT 1 FROM petty_cash WHERE company_id=? AND import_batch=?)`,args:[cid,uid,JSON.stringify({batch,num:h.num,submitted:b.rows.length,...reconciliation,declaredPeriod:h.declared_from_date?[h.declared_from_date,h.declared_to_date]:null,period:[h.from_date,h.to_date]}),cid,batch]});
  const result=await db.batch(stmts,'write');if(!result[0].rowsAffected)return res.status(409).json({error:'Ya existe una caja chica con este número. No se importó ningún gasto. Revisa la caja existente.'});
  res.status(201).json({batch,inserted:b.rows.length,skipped:0});
 });

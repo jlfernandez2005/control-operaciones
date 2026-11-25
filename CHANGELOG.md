@@ -1,3 +1,8 @@
+## 3.6.4
+- Zona de arrastrar y soltar PDF, XLSX y CSV; análisis automático de un informe a la vez.
+- Caja chica: total corregible y diferencias justificadas; fondo independiente, saldo disponible o por reembolsar.
+- Auditoría conserva total impreso, total confirmado, fondo original, fondo revisado y diferencia. Sin migración de base de datos.
+
 ## 3.6.3
 - Lectura de gastos sin número de ítem; detección informativa de liquidaciones anexas con control de orden, fondo y diferencia.
 - Pruebas con pagos agrupados y anexos sin duplicar operaciones.

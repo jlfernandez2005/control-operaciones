@@ -1,6 +1,6 @@
 # SISFIA · Gestión financiera institucional
 
-**Versión 3.6.3** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
+**Versión 3.6.4** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
 
 ## Actualización del servicio Docker en Render (recomendado)
 
@@ -60,3 +60,6 @@ Reconocimiento por encabezados de operaciones PDF con tablas, Excel y CSV. Las c
 - Reconoce gastos con fecha, concepto e importe aunque falte el número de ítem.
 - En PDF de pagos, revisa hasta las primeras 20 páginas para localizar liquidaciones anexas. Muestra el detalle en modo de consulta, con conciliación por orden y fondo. No lo importa como gasto adicional ni modifica el presupuesto.
 - Si una liquidación requiere vinculación, comprueba su identificador y los importes antes de cargarla por separado.
+
+### 3.6.4: carga directa y corrección de caja chica
+Arrastra un archivo a la zona de carga o selecciónalo. Si la suma no coincide con el total impreso, verifica cada gasto y usa **Usar suma de gastos** o introduce el total corregido; el motivo se conserva en auditoría. El total corregido debe ser igual a la suma del detalle. El fondo es editable e independiente. Si los gastos exceden el fondo, el presupuesto mantiene su control de conciliación y no suma ese exceso automáticamente. No requiere migración.
