@@ -71,11 +71,13 @@ function enterApp(){
   $('#company-name').textContent=state.company.name;$('#today-label').textContent=new Intl.DateTimeFormat('es-PE',{dateStyle:'long',timeZone:'America/Lima'}).format(new Date());$('#r-f').value=today();$('#ci-date').value=today();$('#m-m').value=today().slice(0,7);
   ['#op-form','#prov-form','#d-new','#c-new'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
   drawDash();drawReg();drawRes();drawPrv();drawCC();
-  FinanceUI.init({role:state.user.role,refresh});
+  FinanceUI.init({role:state.user.role,refresh});BudgetUI.init(state.user.role);
 }
 
 document.querySelectorAll('#nav button').forEach(b=>{
   b.onclick=()=>{
+    if(b.dataset.t!=='budget'&&document.querySelector('#t-budget').classList.contains('on')&&!BudgetUI.canLeave())return;
+    if(b.dataset.t!=='imp'&&document.querySelector('#t-imp').classList.contains('on')){if(!FinanceUI.canLeave())return;FinanceUI.resetImport();}
     document.querySelectorAll('#nav button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
     document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id==='t-'+b.dataset.t));
     if(b.dataset.t==='res')drawRes();
@@ -83,6 +85,7 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t==='aud')loadAudit(true);
     if(b.dataset.t==='imp')FinanceUI.openImport();
     if(b.dataset.t==='fin')FinanceUI.openReports();
+    if(b.dataset.t==='budget')BudgetUI.open();
     window.scrollTo({top:0,behavior:'instant'});
   };
 });

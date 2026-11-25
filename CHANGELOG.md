@@ -1,3 +1,8 @@
+## 3.6.0
+- Importación automática al seleccionar, estado Pendiente por defecto, guardado directo, salida visible y herramientas avanzadas plegables.
+- Límite de archivo 25 MiB, procesamiento individual y timeout de 90 s.
+- Presupuesto mensual/anual editable, propuesta histórica, conciliación caja y referencias de informes mensuales. Exportaciones PDF y XLSX.
+
 ## 3.5.2 · Identidad oficial SISFIA
 
 - Logo oficial proporcionado por el usuario, con emblema para iconos y favicon.

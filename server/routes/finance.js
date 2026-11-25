@@ -11,11 +11,11 @@ const r=express.Router();r.use(authRequired);
 const editor=roleRequired('admin','editor');
 const optionalDoc=z.union([z.literal(''),z.string().regex(/^(\d{8}|\d{11})$/)]).default('');
 const rowSchema=z.object({date,concept:text(500).refine(s=>!isTotal(s),'No se admiten totales ni saldos'),amount:money,ruc:optionalDoc,receipt:optionalText(200),provider:optionalText(200),category:text(100),status:z.enum(['Pendiente','Pagado']),bank:optionalText(80),type:optionalText(80),reference:text(300),cci:optionalText(200),order:optionalText(80)});
-const fileSchema=z.object({name:text(200),data:z.string().min(1).max(11184816).regex(/^[A-Za-z0-9+/]+={0,2}$/)});
+const fileSchema=z.object({name:text(200),data:z.string().min(1).max(34952536).regex(/^[A-Za-z0-9+/]+={0,2}$/)});
 r.get('/categories',async(req,res)=>{
  const cid=req.user.cid;const [a,b]=await db.batch([{sql:'SELECT DISTINCT category FROM ops WHERE company_id=? AND category IS NOT NULL AND category<>\'\' AND deleted_at IS NULL',args:[cid]},{sql:'SELECT DISTINCT i.category FROM petty_items i JOIN petty_cash c ON c.id=i.cc_id WHERE c.company_id=? AND i.category IS NOT NULL AND i.category<>\'\'',args:[cid]}],'read');res.json([...new Set([...categories,...a.rows.map(x=>x.category),...b.rows.map(x=>x.category)])]);
 });
-r.post('/preview',editor,express.json({limit:'12mb'}),async(req,res)=>{const b=validate(fileSchema,req,res);if(!b)return;try{const raw=await financeWorker('preview',b);const parsed=JSON.parse(raw.toString());res.json({...parsed,name:b.name,digest:crypto.createHash('sha256').update(Buffer.from(b.data,'base64')).digest('hex')});}catch(e){res.status(e.status||422).json({error:e.message});}});
+r.post('/preview',editor,express.json({limit:'35mb'}),async(req,res)=>{const b=validate(fileSchema,req,res);if(!b)return;try{const raw=await financeWorker('preview',b);const parsed=JSON.parse(raw.toString());res.json({...parsed,name:b.name,digest:crypto.createHash('sha256').update(Buffer.from(b.data,'base64')).digest('hex')});}catch(e){res.status(e.status||422).json({error:e.message});}});
 r.post('/import',editor,async(req,res)=>{
  const b=validate(z.object({name:text(200),digest:z.string().regex(/^[a-f0-9]{64}$/),rows:z.array(rowSchema).min(1).max(500)}),req,res);if(!b)return;
  const cid=req.user.cid,uid=req.user.uid,batch=crypto.randomUUID();const unique=new Map();for(const x of b.rows){const k=fingerprint(x);if(!unique.has(k))unique.set(k,x);}

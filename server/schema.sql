@@ -95,3 +95,24 @@ CREATE TABLE IF NOT EXISTS import_batches (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_import_company ON import_batches(company_id,created_at);
+CREATE TABLE IF NOT EXISTS budget_lines (
+ company_id INTEGER NOT NULL REFERENCES companies(id),
+ month TEXT NOT NULL,
+ category TEXT NOT NULL,
+ cents INTEGER NOT NULL CHECK(cents>=0),
+ PRIMARY KEY(company_id,month,category)
+);
+CREATE TABLE IF NOT EXISTS budget_cash_links (
+ company_id INTEGER NOT NULL REFERENCES companies(id),
+ cash_id INTEGER NOT NULL REFERENCES petty_cash(id) ON DELETE CASCADE,
+ op_id INTEGER NOT NULL REFERENCES ops(id),
+ PRIMARY KEY(company_id,cash_id), UNIQUE(company_id,op_id)
+);
+CREATE TABLE IF NOT EXISTS budget_month_refs (
+ company_id INTEGER NOT NULL REFERENCES companies(id),
+ month TEXT NOT NULL,
+ cents INTEGER NOT NULL CHECK(cents>=0),
+ filename TEXT NOT NULL,
+ updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+ PRIMARY KEY(company_id,month)
+);

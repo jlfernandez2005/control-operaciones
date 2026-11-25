@@ -2,7 +2,7 @@
 import sys, json, base64, io, re, csv, zipfile, tempfile, subprocess, os, datetime, unicodedata
 MAX_ROWS=3000
 MAX_COLS=40
-MAX_BYTES=8*1024*1024
+MAX_BYTES=25*1024*1024
 
 def cell(v):
     if v is None: return ''
@@ -14,7 +14,7 @@ def cell(v):
 
 def preview(p):
     data=base64.b64decode(p['data'],validate=True)
-    if len(data)>MAX_BYTES: raise ValueError('Archivo superior a 8 MB.')
+    if len(data)>MAX_BYTES: raise ValueError('Archivo superior a 25 MB.')
     name=p['name'].lower(); sheets=[]; warnings=[]
     if name.endswith('.xlsx'):
         from openpyxl import load_workbook
@@ -154,6 +154,7 @@ def pdf(p):
 if __name__=='__main__':
     try:
         mode=sys.argv[1];p=json.load(sys.stdin)
-        {'preview':preview,'xlsx':xlsx,'pdf':pdf}[mode](p)
+        from budget_export import budget_xlsx,budget_pdf
+        {'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf}[mode](p)
     except (ValueError,KeyError) as e: print(str(e),file=sys.stderr);sys.exit(2)
     except Exception as e: print('No se pudo leer o generar el documento ('+type(e).__name__+'). Verifica el formato y sus límites.',file=sys.stderr);sys.exit(2)
