@@ -1,7 +1,7 @@
 {
-  "name": "control-operaciones",
-  "version": "3.3.0",
-  "description": "Control de Operaciones y Pagos \u00b7 La Salle",
+  "name": "sisfia",
+  "version": "3.4.0",
+  "description": "SISFIA · Gestión financiera institucional",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
@@ -16,7 +16,8 @@
     "db:seed": "node server/db.js --seed",
     "db:seed:full": "node server/seed-extended.js",
     "migrate:v2": "node scripts/migrate-v2-to-v3.js",
-    "test:static": "node --test tests/static.test.cjs"
+    "test:static": "node --test tests/static.test.cjs tests/finance-static.test.cjs",
+    "test:documents": "python3 tests/finance_documents_test.py"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
@@ -37,6 +38,6 @@
     "vitest": "^2.1.1"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22 <23"
   }
 }

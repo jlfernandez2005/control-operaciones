@@ -6,7 +6,7 @@ const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Lima',year:'n
 const isAdmin=()=>state.user?.role==='admin';
 const canEdit=()=>state.user?.role!=='lector';
 const total=L=>L.reduce((s,o)=>s+Math.round(Number(o.amount)*100),0)/100;
-const refresh=async()=>{await loadAll();drawDash();drawReg();drawRes();drawPrv();drawCC();};
+const refresh=async()=>{await loadAll();drawDash();drawReg();drawRes();drawPrv();drawCC();FinanceUI.loadCats().catch(()=>{});};
 const run=fn=>async e=>{const target=e?.currentTarget;const b=target?.tagName==='BUTTON'?target:target?.tagName==='FORM'?target.querySelector('[type=submit]'):null;if(b?.disabled){e?.preventDefault();return;}if(b)b.disabled=true;try{await fn(e)}catch(err){toast(err.message)}finally{if(b)b.disabled=false}};
 window.addEventListener('unhandledrejection',e=>{e.preventDefault();toast(e.reason?.message||'No se pudo completar la acción')});
 
@@ -71,6 +71,7 @@ function enterApp(){
   $('#company-name').textContent=state.company.name;$('#today-label').textContent=new Intl.DateTimeFormat('es-PE',{dateStyle:'long',timeZone:'America/Lima'}).format(new Date());$('#r-f').value=today();$('#ci-date').value=today();$('#m-m').value=today().slice(0,7);
   ['#op-form','#prov-form','#d-new','#c-new'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
   drawDash();drawReg();drawRes();drawPrv();drawCC();
+  FinanceUI.init({role:state.user.role,refresh});
 }
 
 document.querySelectorAll('#nav button').forEach(b=>{
@@ -80,6 +81,9 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t==='res')drawRes();
     if(b.dataset.t==='usr')drawUsr();
     if(b.dataset.t==='aud')loadAudit(true);
+    if(b.dataset.t==='imp')FinanceUI.openImport();
+    if(b.dataset.t==='fin')FinanceUI.openReports();
+    window.scrollTo({top:0,behavior:'instant'});
   };
 });
 
@@ -102,12 +106,12 @@ function drawDash(){
 let EDID=null;
 function drawReg(){
   const fl=$('#r-fm')?.value;
-  const q=$('#r-search').value.toLowerCase(), status=$('#r-status').value;const L=(state.archive?state.deleted||[]:state.ops).filter(o=>(!fl||o.date.slice(0,7)===fl)&&(!status||o.status===status)&&(!q||[o.concept,o.ruc,o.receipt,state.prov.find(p=>p.ruc===o.ruc)?.name].join(' ').toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);$('#r-count').textContent=`${L.length} operaciones · ${fm(total(L))}`;
+  const q=$('#r-search').value.toLowerCase(), status=$('#r-status').value,cat=$('#r-category-filter').value;const L=(state.archive?state.deleted||[]:state.ops).filter(o=>(!fl||o.date.slice(0,7)===fl)&&(!status||o.status===status)&&(!cat||(o.category||'Sin clasificar')===cat)&&(!q||[o.concept,o.ruc,o.receipt,o.provider_name,o.category,state.prov.find(p=>p.ruc===o.ruc)?.name].join(' ').toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);$('#r-count').textContent=`${L.length} operaciones · ${fm(total(L))}`;
   $('#dl').innerHTML=state.prov.map(p=>`<option value="${esc(p.ruc)}">${esc(p.name)}</option>`).join('');
   const canEdit=state.user.role!=='lector';
   $('#r-tb').innerHTML=L.map(o=>{
     const p=state.prov.find(x=>x.ruc===o.ruc);
-    return`<tr><td>${o.id}</td><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="l">${esc(o.receipt||'')}</td><td class="r">${fm(o.amount)}</td><td>${p?esc(p.cci):''}</td><td class="l">${p?esc(p.name):'<span class="bad">NO REGISTRADO</span>'}</td><td>${esc(o.bank)}</td><td>${esc(o.type)}</td><td><span class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</span></td><td>${o.signature?'<span class="muted">Generada</span>':''}</td><td>${state.archive?`<button class="btn g" data-act="restore" data-id="${o.id}">Restaurar</button>`:`${canEdit?`<button class="x edit" data-act="eo" data-id="${o.id}">Editar</button>`:''}${isAdmin()?`<button class="x" data-act="del" data-id="${o.id}">Archivar</button>`:''}`}</td></tr>`;
+    return`<tr><td>${o.id}</td><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="l">${esc(o.receipt||'')}</td><td class="r">${fm(o.amount)}</td><td>${p?esc(p.cci):''}</td><td class="l">${esc(o.provider_name||p?.name||'Sin registrar')}</td><td>${esc(o.bank)}</td><td>${esc(o.type)}</td><td>${esc(o.category||'Sin clasificar')}</td><td><span class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</span></td><td>${o.signature?'<span class="muted">Generada</span>':''}</td><td>${state.archive?`<button class="btn g" data-act="restore" data-id="${o.id}">Restaurar</button>`:`${canEdit?`<button class="x edit" data-act="eo" data-id="${o.id}">Editar</button>`:''}${isAdmin()?`<button class="x" data-act="del" data-id="${o.id}">Archivar</button>`:''}`}</td></tr>`;
   }).join('');
 }
 window.eo=async function(id){
@@ -115,7 +119,7 @@ window.eo=async function(id){
   EDID=id;
   $('#r-f').value=o.date;$('#r-c').value=o.concept;$('#r-p').value=o.receipt||'';
   $('#r-m').value=o.amount;$('#r-r').value=o.ruc;$('#r-e').value=o.status;
-  $('#r-b').value=o.bank;$('#r-t').value=o.type;
+  $('#r-b').value=o.bank;$('#r-t').value=o.type;$('#r-cat').value=o.category||'';$('#r-provider').value=o.provider_name||'';
   $('#r-add').textContent='Guardar';$('#op-title').textContent='Editar operación';show('#r-cancel',true);
   document.querySelector('#nav button[data-t="reg"]').click();
 };
@@ -125,12 +129,12 @@ window.del=async function(id){
   await refresh();toast('Operación archivada');
 };
 $('#r-add').onclick=async function(){
-  const body={date:$('#r-f').value,concept:$('#r-c').value.trim(),receipt:$('#r-p').value.trim(),amount:parseFloat($('#r-m').value),ruc:$('#r-r').value.trim(),status:$('#r-e').value,bank:$('#r-b').value,type:$('#r-t').value};
+  const body={date:$('#r-f').value,concept:$('#r-c').value.trim(),receipt:$('#r-p').value.trim(),amount:parseFloat($('#r-m').value),ruc:$('#r-r').value.trim(),status:$('#r-e').value,bank:$('#r-b').value,type:$('#r-t').value,category:$('#r-cat').value.trim(),provider_name:$('#r-provider').value.trim()};
   try{
     if(EDID){await api('/ops/'+EDID,{method:'PUT',body});resetOp()}
     else await api('/ops',{method:'POST',body});
     await refresh();toast('Guardado');$('#r-msg').textContent='';
-    ['r-c','r-p','r-m','r-r'].forEach(i=>{$('#'+i).value=''});
+    ['r-c','r-p','r-m','r-r','r-cat','r-provider'].forEach(i=>{$('#'+i).value=''});
   }catch(e){$('#r-msg').textContent='⚠ '+e.message}
 };
 
@@ -165,7 +169,7 @@ function drawCC(preferred){
 }
 $('#c-sel').onchange=()=>drawCC();$('#c-new').onclick=()=>show('#c-form',true);$('#c-cancel').onclick=()=>show('#c-form',false);
 $('#c-form').onsubmit=run(async e=>{e.preventDefault();const {id}=await api('/cc',{method:'POST',body:{num:$('#c-num').value,resp:$('#c-resp').value,area:$('#c-area').value,fund:Number($('#c-fund').value),from_date:$('#c-from').value||null,to_date:$('#c-to').value||null}});e.target.reset();show('#c-form',false);await refresh();drawCC(id);toast('Caja registrada');});
-$('#ci-form').onsubmit=run(async e=>{e.preventDefault();const id=$('#c-sel').value;await api(`/cc/${id}/items`,{method:'POST',body:{date:$('#ci-date').value,detail:$('#ci-detail').value,provider:$('#ci-provider').value,receipt:$('#ci-receipt').value,amount:Number($('#ci-amount').value)}});e.target.reset();$('#ci-date').value=today();await refresh();toast('Gasto registrado');});
+$('#ci-form').onsubmit=run(async e=>{e.preventDefault();const id=$('#c-sel').value;await api(`/cc/${id}/items`,{method:'POST',body:{date:$('#ci-date').value,detail:$('#ci-detail').value,provider:$('#ci-provider').value,receipt:$('#ci-receipt').value,amount:Number($('#ci-amount').value),category:$('#ci-cat').value.trim()||FinanceCore.suggestCategory($('#ci-detail').value)}});e.target.reset();$('#ci-date').value=today();await refresh();toast('Gasto registrado');});
 async function drawUsr(){
   if(state.user.role!=='admin')return;
   const list=await api('/users');
@@ -203,8 +207,8 @@ $('#a-next')?.addEventListener('click',()=>{aOffset+=aLimit;loadAudit(false)});
 
 $('#btn-logout').onclick=run(async()=>{if(!confirm('¿Cerrar sesión?'))return;await api('/auth/logout',{method:'POST',body:{}});location.reload()});
 $('#btn-password').onclick=()=>show('#password-form',true);$('#pw-cancel').onclick=()=>{ $('#password-form').reset();show('#password-form',false);};$('#password-form').onsubmit=run(async e=>{e.preventDefault();await api('/auth/change-password',{method:'POST',body:{currentPassword:$('#pw-current').value,newPassword:$('#pw-new').value}});e.target.reset();show('#password-form',false);toast('Contraseña actualizada');});
-$('#btn-theme').onclick=()=>{const cur=document.documentElement.getAttribute('data-theme');const next=cur==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',next);localStorage.setItem('theme',next)};
-const th=localStorage.getItem('theme');if(th)document.documentElement.setAttribute('data-theme',th);
+$('#btn-theme').onclick=()=>{const cur=document.documentElement.getAttribute('data-theme');const next=cur==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',next);try{localStorage.setItem('theme',next)}catch{}};
+try{const th=localStorage.getItem('theme');if(th)document.documentElement.setAttribute('data-theme',th);}catch{}
 
 $('#d-export-all').onclick=async function(){
   const a=document.createElement('a');
@@ -213,8 +217,8 @@ $('#d-export-all').onclick=async function(){
   a.click();
 };
 
-function resetOp(){EDID=null;$('#r-add').textContent='Agregar';$('#op-title').textContent='Nueva operación';show('#r-cancel',false);['r-c','r-p','r-m','r-r'].forEach(i=>$('#'+i).value='');}
-$('#r-cancel').onclick=resetOp;['#r-fm','#r-search','#r-status'].forEach(id=>$(id).addEventListener('input',drawReg));$('#m-m').onchange=drawRes;$('#d-new').onclick=()=>document.querySelector('#nav button[data-t=reg]').click();
+function resetOp(){EDID=null;$('#r-add').textContent='Agregar';$('#op-title').textContent='Nueva operación';show('#r-cancel',false);['r-c','r-p','r-m','r-r','r-cat','r-provider'].forEach(i=>$('#'+i).value='');}
+$('#r-cancel').onclick=resetOp;['#r-fm','#r-search','#r-status','#r-category-filter'].forEach(id=>$(id).addEventListener('input',drawReg));$('#m-m').onchange=drawRes;$('#d-new').onclick=()=>document.querySelector('#nav button[data-t=reg]').click();$('#d-import').onclick=()=>document.querySelector('#nav button[data-t=imp]').click();$('#d-finance').onclick=()=>document.querySelector('#nav button[data-t=fin]').click();
 $('#r-archive').onclick=run(async()=>{if(!state.archive)state.deleted=await api('/ops?deleted=true');state.archive=!state.archive;$('#r-archive').textContent=state.archive?'Ver operaciones':'Ver papelera';show('#op-form',canEdit()&&!state.archive);resetOp();drawReg();});
 const actions={eo:window.eo,del:window.del,dp:window.dp,du:window.du,restore:async id=>{await api(`/ops/${id}/restore`,{method:'POST',body:{}});state.deleted=await api('/ops?deleted=true');await refresh();toast('Restaurada');},di:async id=>{if(confirm('¿Eliminar gasto?')){await api(`/cc/${$('#c-sel').value}/items/${id}`,{method:'DELETE'});await refresh();}},reset:async id=>{const password=prompt('Contraseña temporal (mínimo 12 caracteres)');if(password){await api(`/users/${id}/reset-password`,{method:'POST',body:{password}});toast('Contraseña temporal asignada');await drawUsr();}}};
 document.addEventListener('click',run(async e=>{const b=e.target.closest('[data-act]');if(b&&actions[b.dataset.act]){b.disabled=true;try{await actions[b.dataset.act](Number(b.dataset.id));}finally{b.disabled=false;}}}));

@@ -14,11 +14,12 @@ import usersRouter from './routes/users.js';
 import compRouter from './routes/companies.js';
 import exportRouter from './routes/export.js';
 import auditRouter from './routes/audit.js';
+import financeRouter from './routes/finance.js';
 const app=express(), PORT=process.env.PORT||3000, pub=fileURLToPath(new URL('../public/',import.meta.url));
 app.disable('x-powered-by');
 if(process.env.TRUST_PROXY==='1')app.set('trust proxy',1);
 app.use(helmet({contentSecurityPolicy:{directives:{scriptSrc:["'self'"],scriptSrcAttr:["'none'"],styleSrc:["'self'","'unsafe-inline'"],upgradeInsecureRequests:process.env.NODE_ENV==='production'?[]:null}},strictTransportSecurity:process.env.NODE_ENV==='production'?undefined:false}));
-app.use(express.json({limit:'128kb'}));app.use(cookieParser());
+app.use(cookieParser());
 app.use('/api',(req,res,next)=>{
  res.set('Cache-Control','no-store');
  if(!['GET','HEAD','OPTIONS'].includes(req.method)){
@@ -28,9 +29,11 @@ app.use('/api',(req,res,next)=>{
  }next();
 });
 app.use('/api',rateLimit({windowMs:60_000,max:240,standardHeaders:true,legacyHeaders:false,message:{error:'Demasiadas solicitudes'}}));
+const standardJson=express.json({limit:'128kb'}), importJson=express.json({limit:'2mb'});
+app.use((req,res,next)=>req.path==='/api/finance/preview'?next():req.path==='/api/finance/import'?importJson(req,res,next):standardJson(req,res,next));
 // Express 4 no propaga automáticamente rechazos de handlers async.
 function wrap(router){for(const l of router.stack){if(l.route){for(const h of l.route.stack){const fn=h.handle;if(fn.constructor.name==='AsyncFunction')h.handle=(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);}}}return router;}
-for(const [name,router] of Object.entries({auth:authRouter,ops:opsRouter,prov:provRouter,cc:ccRouter,users:usersRouter,companies:compRouter,export:exportRouter,audit:auditRouter}))app.use('/api/'+name,wrap(router));
+for(const [name,router] of Object.entries({auth:authRouter,ops:opsRouter,prov:provRouter,cc:ccRouter,users:usersRouter,companies:compRouter,export:exportRouter,audit:auditRouter,finance:financeRouter}))app.use('/api/'+name,wrap(router));
 app.use('/api',(_req,res)=>res.status(404).json({error:'No encontrado'}));
 app.use(express.static(pub,{setHeaders:(res)=>res.set('Cache-Control','no-cache')}));
 app.get('/',(_req,res)=>res.sendFile(path.join(pub,'index.html')));

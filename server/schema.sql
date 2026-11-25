@@ -83,4 +83,15 @@ CREATE TABLE IF NOT EXISTS audit (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ops_company_date ON ops(company_id, date);
-CREATE INDEX IF NOT EXISTS idx_audit_company ON audit(company_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_company ON audit(company_id, created_at);;
+CREATE TABLE IF NOT EXISTS import_batches (
+  id TEXT PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id),
+  user_id INTEGER REFERENCES users(id),
+  filename TEXT NOT NULL,
+  digest TEXT NOT NULL,
+  submitted INTEGER NOT NULL,
+  inserted INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_import_company ON import_batches(company_id,created_at);

@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+// On Render, do not silently fall back to ephemeral local storage.
+if ((process.env.RENDER==='true'||process.env.RENDER_SERVICE_ID||process.env.TURSO_DATABASE_URL||process.env.TURSO_AUTH_TOKEN) && (!process.env.TURSO_DATABASE_URL||!process.env.TURSO_AUTH_TOKEN)) throw new Error('Configura TURSO_DATABASE_URL y TURSO_AUTH_TOKEN antes de iniciar SISFIA.');
 const local = path.resolve(process.env.DB_PATH || './data/control.db');
 if (!process.env.TURSO_DATABASE_URL) fs.mkdirSync(path.dirname(local),{recursive:true});
 export const db = createClient({url:process.env.TURSO_DATABASE_URL || pathToFileURL(local).href,authToken:process.env.TURSO_AUTH_TOKEN});
@@ -15,6 +17,12 @@ export async function initSchema(){
   }
   const cols=(await db.execute('PRAGMA table_info(ops)')).rows;
   if(!cols.some(c=>c.name==='deleted_at')) await db.execute('ALTER TABLE ops ADD COLUMN deleted_at TEXT');
+  // Additive, idempotent migrations: preserve all previous rows and login credentials.
+  for(const [name,definition] of Object.entries({category:"TEXT NOT NULL DEFAULT 'Sin clasificar'",provider_name:"TEXT NOT NULL DEFAULT ''",import_batch:'TEXT',source_file:'TEXT',source_ref:'TEXT'})){
+    if(!cols.some(c=>c.name===name)) await db.execute(`ALTER TABLE ops ADD COLUMN ${name} ${definition}`);
+  }
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_ops_import_batch ON ops(company_id,import_batch)');
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_ops_match ON ops(company_id,date,amount,ruc,receipt)');
 }
 export async function seed(){
   const username=process.env.ADMIN_USER || 'admin', password=process.env.ADMIN_PASS;
