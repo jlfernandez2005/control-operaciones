@@ -1,6 +1,6 @@
 # SISFIA · Gestión financiera institucional
 
-**Versión 3.6.0** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
+**Versión 3.6.3** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
 
 ## Actualización del servicio Docker en Render (recomendado)
 
@@ -49,3 +49,14 @@ Al seleccionar el archivo se analiza automáticamente. Las filas válidas se sel
 El nuevo módulo Presupuesto crea metas mensuales por rubro y consolida el año, con un promedio histórico configurable por meses elegidos y ajuste porcentual. Los meses históricos pueden ser incompletos: el usuario debe elegirlos y validar la propuesta. El plan no se guarda automáticamente. Los gastos registrados se toman de operaciones activas, pagadas y pendientes, no de una suma de operaciones + caja. La caja chica vinculada a una transferencia por orden y fondo exactos (o vínculo manual) redistribuye la operación por sus rubros, en el mes de la transferencia; las cajas sin vínculo o con exceso no se suman y aparecen en conciliación. Los informes mensuales acumulados se guardan solo como referencia, una por mes, y muestran diferencia contra operaciones. Las tablas de presupuesto se agregan sin modificar registros previos. La detección de duplicados no puede identificar todos los solapamientos de informes con fechas o conceptos diferentes. No importar resúmenes acumulados como movimientos.
 
 El límite de archivo sube a 25 MiB (se conserva el máximo de 100 páginas PDF, 3000 filas, 500 filas por lote y 20 MiB XLSX descomprimido). Se procesa una tarea de documentos a la vez, con máximo 90 segundos; no se garantiza que cualquier PDF de 25 MiB pueda procesarse con la memoria disponible de Render. Los PDF escaneados o de varias tablas resumen requieren preparación previa.
+
+### Corrección 3.6.1
+Reconoce setiembre y septiembre; conserva ítems numerados con fechas inválidas para revisión, usa la numeración original, advierte discrepancias del periodo y bloquea el guardado de caja si la suma no coincide con el total impreso informado. Si ya existe una caja parcial, revisa y corrige esa caja; no se sobreescribe al reimportar. No requiere migración adicional respecto a 3.6.0.
+
+### 3.6.2: lectura adaptable
+Reconocimiento por encabezados de operaciones PDF con tablas, Excel y CSV. Las columnas pueden cambiar de orden y las opcionales pueden faltar. Se admite USD como referencia original: antes de guardar, confirma el monto equivalente en PEN en cada fila con USD. No se realiza conversión automática ni se mezclan monedas en los presupuestos. La base recibe una columna aditiva `ops.usd_reference`. Los PDF con formatos no tabulares o sin texto todavía requieren revisión o conversión. Se interpreta la tabla resumen de la primera página, no los anexos.
+
+### 3.6.3: informes de pagos con liquidaciones anexas
+- Reconoce gastos con fecha, concepto e importe aunque falte el número de ítem.
+- En PDF de pagos, revisa hasta las primeras 20 páginas para localizar liquidaciones anexas. Muestra el detalle en modo de consulta, con conciliación por orden y fondo. No lo importa como gasto adicional ni modifica el presupuesto.
+- Si una liquidación requiere vinculación, comprueba su identificador y los importes antes de cargarla por separado.

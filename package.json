@@ -1,6 +1,6 @@
 {
   "name": "sisfia",
-  "version": "3.6.0",
+  "version": "3.6.3",
   "description": "SISFIA · Sistema Financiero Administrativo",
   "type": "module",
   "main": "server/index.js",
@@ -18,7 +18,9 @@
     "migrate:v2": "node scripts/migrate-v2-to-v3.js",
     "test:static": "node --test tests/static.test.cjs tests/finance-static.test.cjs tests/budget-static.test.cjs",
     "test:documents": "python3 tests/finance_documents_test.py",
-    "test:smart": "python3 tests/smart_import_test.py"
+    "test:smart": "python3 tests/smart_import_test.py",
+    "test:adaptive": "python3 tests/adaptive_import_test.py",
+    "test:annex": "python3 tests/annex_import_test.py"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

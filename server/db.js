@@ -18,7 +18,7 @@ export async function initSchema(){
   const cols=(await db.execute('PRAGMA table_info(ops)')).rows;
   if(!cols.some(c=>c.name==='deleted_at')) await db.execute('ALTER TABLE ops ADD COLUMN deleted_at TEXT');
   // Additive, idempotent migrations: preserve all previous rows and login credentials.
-  for(const [name,definition] of Object.entries({category:"TEXT NOT NULL DEFAULT 'Sin clasificar'",provider_name:"TEXT NOT NULL DEFAULT ''",import_batch:'TEXT',source_file:'TEXT',source_ref:'TEXT',bank_account:"TEXT NOT NULL DEFAULT ''",order_number:"TEXT NOT NULL DEFAULT ''"})){
+  for(const [name,definition] of Object.entries({category:"TEXT NOT NULL DEFAULT 'Sin clasificar'",provider_name:"TEXT NOT NULL DEFAULT ''",import_batch:'TEXT',source_file:'TEXT',source_ref:'TEXT',bank_account:"TEXT NOT NULL DEFAULT ''",order_number:"TEXT NOT NULL DEFAULT ''",usd_reference:"REAL"})){
     if(!cols.some(c=>c.name===name)) await db.execute(`ALTER TABLE ops ADD COLUMN ${name} ${definition}`);
   }
   for(const [table,fields] of Object.entries({petty_cash:{import_batch:'TEXT',report_date:'TEXT',source_file:'TEXT'},petty_items:{source_ref:'TEXT',source_category:'TEXT'}})){

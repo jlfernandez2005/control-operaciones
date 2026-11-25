@@ -1,3 +1,15 @@
+## 3.6.3
+- Lectura de gastos sin número de ítem; detección informativa de liquidaciones anexas con control de orden, fondo y diferencia.
+- Pruebas con pagos agrupados y anexos sin duplicar operaciones.
+
+## 3.6.2
+- Reconocimiento semántico de columnas, posiciones variables y montos PEN/USD.
+- Confirmación de equivalentes en soles y almacenamiento de USD de referencia.
+
+## 3.6.1
+- Corrige la lectura de setiembre, conserva la numeración real y valida periodos y totales de caja chica.
+- Prueba de regresión con el informe 011-2026 (37 gastos, S/ 1,500.00); no se incluyen documentos originales.
+
 ## 3.6.0
 - Importación automática al seleccionar, estado Pendiente por defecto, guardado directo, salida visible y herramientas avanzadas plegables.
 - Límite de archivo 25 MiB, procesamiento individual y timeout de 90 s.

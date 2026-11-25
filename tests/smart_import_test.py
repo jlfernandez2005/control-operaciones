@@ -5,8 +5,17 @@ import sys, pathlib, sqlite3, re, unittest, os, io, json, base64, subprocess
 from openpyxl import Workbook
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
-from smart_import import detect_pdf, total_cents, money
+from smart_import import detect_pdf, total_cents, money, date_es, reconcile_cash_period
 class SmartTest(unittest.TestCase):
+    def test_setiembre_and_period(self):
+        for word in ['setiembre','septiembre','SETIEMBRE']:
+            self.assertEqual(date_es('14 de '+word,2026),'2026-09-14')
+        self.assertEqual(date_es('30 de setiembre de 2026'),'2026-09-30')
+        self.assertEqual(date_es('31 de setiembre',2026),'')
+        m={'from_date':'2026-08-01','to_date':'2026-08-13'};warnings=[]
+        reconcile_cash_period(m,[{'date':'2026-09-14'},{'date':'2026-10-13'}],warnings)
+        self.assertEqual((m['from_date'],m['to_date']),('2026-09-14','2026-10-13'))
+        self.assertEqual(m['declared_from_date'],'2026-08-01');self.assertTrue(warnings)
     def test_amount_formats(self):
         self.assertEqual(money('S/ 1 ,500.00'),1500)
         self.assertEqual(money('12,50'),12.5)
@@ -38,6 +47,16 @@ if __name__=='__main__':
         'INFORME DE CAJA CHICA 001-26 1.pdf':('cash',15,149999),
         'INFORME DE CAJA CHICA 001-26.pdf':('cash',15,149999),
         'INFORME CAJA CHICA 012 - 2026.pdf':('cash',27,150000)}
+        extra='Páginas desdeINFORME CAJA CHICA 011 - 2026.pdf'
+        if (directory/extra).exists():
+            d=detect_pdf(directory/extra,extra)
+            assert len(d['rows'])==37 and total_cents(d['rows'])==150000 and d['declared']==1500
+            assert [int(r['reference'].rsplit(' ',1)[1]) for r in d['rows']]==list(range(1,38))
+            assert sum(r['date'].startswith('2026-09') for r in d['rows'])==25
+            assert sum(r['date'].startswith('2026-10') for r in d['rows'])==12
+            assert d['meta']['declared_from_date']=='2026-08-01' and d['meta']['from_date']=='2026-09-14'
+            assert [r['usd'] for r in d['rows'] if r['usd']]==[28]
+            print(f'{extra}: 37 filas / S/ 1,500.00 — coincide')
         for name,(kind,n,total) in expected.items():
             d=detect_pdf(directory/name,name);assert (d['kind'],len(d['rows']),total_cents(d['rows']))==(kind,n,total);assert round(d['declared']*100)==total
             if name.startswith('PAGOS 06'):assert d['meta']['report_date']=='2026-01-06'
