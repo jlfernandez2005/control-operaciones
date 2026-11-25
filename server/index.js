@@ -30,7 +30,7 @@ app.use('/api',(req,res,next)=>{
 });
 app.use('/api',rateLimit({windowMs:60_000,max:240,standardHeaders:true,legacyHeaders:false,message:{error:'Demasiadas solicitudes'}}));
 const standardJson=express.json({limit:'128kb'}), importJson=express.json({limit:'2mb'});
-app.use((req,res,next)=>req.path==='/api/finance/preview'?next():req.path==='/api/finance/import'?importJson(req,res,next):standardJson(req,res,next));
+app.use((req,res,next)=>req.path==='/api/finance/preview'?next():['/api/finance/import','/api/finance/import-cash'].includes(req.path)?importJson(req,res,next):standardJson(req,res,next));
 // Express 4 no propaga automáticamente rechazos de handlers async.
 function wrap(router){for(const l of router.stack){if(l.route){for(const h of l.route.stack){const fn=h.handle;if(fn.constructor.name==='AsyncFunction')h.handle=(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);}}}return router;}
 for(const [name,router] of Object.entries({auth:authRouter,ops:opsRouter,prov:provRouter,cc:ccRouter,users:usersRouter,companies:compRouter,export:exportRouter,audit:auditRouter,finance:financeRouter}))app.use('/api/'+name,wrap(router));

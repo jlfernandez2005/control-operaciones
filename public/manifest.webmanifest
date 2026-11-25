@@ -1,10 +1,10 @@
 {
-  "name": "SISFIA · Gestión financiera institucional",
+  "name": "SISFIA · Sistema Financiero Administrativo",
   "short_name": "SISFIA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4f6fb",
-  "theme_color": "#1f3a8a",
+  "theme_color": "#0b3158",
   "icons": [
     {
       "src": "icons/icon-192.png",

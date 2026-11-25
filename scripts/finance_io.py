@@ -20,16 +20,24 @@ def preview(p):
         from openpyxl import load_workbook
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             infos=z.infolist()
-            if len(infos)>2000 or sum(i.file_size for i in infos)>45*1024*1024: raise ValueError('Excel demasiado grande al descomprimir.')
-        wb=load_workbook(io.BytesIO(data),read_only=True,data_only=True,keep_links=False)
+            if len(infos)>2000 or sum(i.file_size for i in infos)>20*1024*1024: raise ValueError('Excel demasiado grande al descomprimir.')
+        wb=load_workbook(io.BytesIO(data),read_only=False,data_only=True,keep_links=False)
         if len(wb.worksheets)>20: raise ValueError('Máximo 20 hojas. Divide el libro.')
         count=0
         for ws in wb.worksheets:
             if ws.max_column and ws.max_column>MAX_COLS: raise ValueError('Máximo 40 columnas por hoja. Elimina columnas vacías o divide el archivo.')
+            if ws.max_row>10000: raise ValueError('Demasiadas filas en una hoja.')
+            if len(ws.merged_cells.ranges)>3000:raise ValueError('Demasiadas celdas combinadas.')
+            merged={}
+            for m in ws.merged_cells.ranges:
+                if m.max_row-m.min_row>500 or m.max_col>MAX_COLS:continue
+                # Vertical merged fields belong to the same group, unlike horizontal titles.
+                if m.min_col==m.max_col:
+                    for rr in range(m.min_row+1,m.max_row+1):merged[(rr,m.min_col)]=ws.cell(m.min_row,m.min_col).value
             rows=[]
             for n,row in enumerate(ws.iter_rows(max_col=min(ws.max_column or MAX_COLS,MAX_COLS),values_only=True),1):
                 if n>10000: raise ValueError('Demasiadas filas en una hoja. Divide el libro.')
-                values=[cell(v) for v in row]
+                values=[cell(merged.get((n,j),v)) for j,v in enumerate(row,1)]
                 while values and values[-1]=='': values.pop()
                 if not values: continue
                 count+=1
@@ -54,6 +62,10 @@ def preview(p):
             info=subprocess.run(['pdfinfo',f],capture_output=True,timeout=12,check=True).stdout.decode('utf-8','replace')
             pages=re.search(r'^Pages:\s+(\d+)',info,re.M)
             if not pages or int(pages.group(1))>100: raise ValueError('Máximo 100 páginas PDF. Divide el informe.')
+            from smart_import import detect_pdf
+            smart=detect_pdf(f,p['name'])
+            if smart:
+                print(json.dumps(smart,ensure_ascii=False));return
             # Output to a file; reject large output before reading it into memory.
             out=os.path.join(td,'text.txt')
             subprocess.run(['pdftotext','-layout','-enc','UTF-8',f,out],capture_output=True,timeout=25,check=True)
@@ -71,9 +83,11 @@ def preview(p):
         sheets=[{'name':'PDF · texto por líneas','rows':rows}];warnings.append('PDF: las columnas se estiman por espacios. Revisa cada fila; las tablas complejas o escaneadas pueden requerir conversión previa a Excel.')
     else: raise ValueError('Formato no admitido. Usa XLSX, CSV o PDF con texto.')
     if not any(s['rows'] for s in sheets): raise ValueError('El archivo no tiene datos legibles.')
-    print(json.dumps({'sheets':sheets,'warnings':warnings},ensure_ascii=False))
+    from smart_import import detect_tabular
+    documents=[d for sh in sheets if (d:=detect_tabular(sh,p['name']))] if not name.endswith('.pdf') else []
+    print(json.dumps({'sheets':sheets,'warnings':warnings,'documents':documents},ensure_ascii=False))
 
-DETAIL=[('date','Fecha'),('concept','Concepto'),('category','Rubro'),('provider','Proveedor'),('ruc','RUC / DNI'),('receipt','Comprobante'),('status','Estado'),('bank','Banco'),('type','Tipo'),('area','Área / caja'),('source','Origen'),('reference','Documento / referencia'),('amount','Monto (S/)')]
+DETAIL=[('date','Fecha'),('concept','Concepto'),('category','Rubro'),('provider','Proveedor'),('ruc','RUC / DNI'),('receipt','Comprobante'),('status','Estado'),('bank','Banco'),('type','Tipo'),('area','Área / caja'),('source','Origen'),('reference','Documento / referencia'),('amount','Monto (S/)'),('cci','Cuenta / CCI'),('order','N° Orden'),('usd','Referencia USD'),('source_category','Categoría original')]
 
 def xlsx(p):
     from openpyxl import Workbook
@@ -107,7 +121,7 @@ def xlsx(p):
         if key==p['group']:continue
         rows=[(g['group'],g['count'],g['amount'],g['paid'],g['pending']) for g in p['allGroups'][key]]
         table(wb.create_sheet(label.replace('/','-')[:31]),'SISFIA | '+label,[label,'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)'],rows,{3,4,5},[38,14,20,20,20])
-    table(wb.create_sheet('Detalle'),'SISFIA | Detalle',[v for _,v in DETAIL],[[r.get(k,'') for k,_ in DETAIL] for r in p['rows']],{13},[14,65,30,35,18,22,17,22,20,25,18,55,20])
+    table(wb.create_sheet('Detalle'),'SISFIA | Detalle',[v for _,v in DETAIL],[[r.get(k,'') for k,_ in DETAIL] for r in p['rows']],{13,16},[14,65,30,35,18,22,17,22,20,25,18,55,20,28,18,18,25])
     output=io.BytesIO();wb.save(output);sys.stdout.buffer.write(output.getvalue())
 
 def pdf(p):
@@ -131,7 +145,7 @@ def pdf(p):
         # Wrap all text instead of truncating references or monetary values.
         rows=[['Fecha','Concepto / comprobante','Rubro','Proveedor / RUC','Estado / origen','Monto (S/)']]
         for r in p['rows']:
-            rows.append([para(r['date']),para(r['concept']+' | '+r['receipt']+' | '+r['reference']),para(r['category']),para(r['provider']+' | '+r['ruc']),para(r['status']+' | '+r['source']),money(r['amount'])])
+            rows.append([para(r['date']),para(r['concept']+' | '+r['receipt']+' | '+r['reference']+(' | Orden '+str(r['order']) if r.get('order') else '')+(' | USD '+str(r['usd']) if r.get('usd') else '')),para(r['category']),para(r['provider']+' | '+r['ruc']),para(r['status']+' | '+r['source']),money(r['amount'])])
         story.append(grid(rows,[67,250,123,130,85,75]))
     def footer(c,d):
         c.setStrokeColor(teal);c.line(35,31,landscape(A4)[0]-35,31);c.setFont('Helvetica',8);c.setFillColor(navy);c.drawString(35,18,'SISFIA · Gestión financiera institucional');c.drawRightString(landscape(A4)[0]-35,18,f'Página {d.page}')

@@ -50,6 +50,12 @@ r.post('/:id/items', roleRequired('admin', 'editor'), async (req, res) => {
   res.status(201).json({ id: Number(info.lastInsertRowid) });
 });
 
+r.put('/:id/items/:itemId', roleRequired('admin','editor'), async(req,res)=>{
+ const b=validate(item,req,res);if(!b)return;
+ const q=await db.execute({sql:`UPDATE petty_items SET date=?,ruc=?,provider=?,receipt=?,category=?,detail=?,amount=?,usd=? WHERE id=? AND cc_id IN (SELECT id FROM petty_cash WHERE id=? AND company_id=?)`,args:[b.date,b.ruc,b.provider,b.receipt,b.category,b.detail,b.amount,b.usd??null,req.params.itemId,req.params.id,req.user.cid]});
+ if(!q.rowsAffected)return res.status(404).json({error:'Gasto no encontrado'});
+ await audit({companyId:req.user.cid,userId:req.user.uid,action:'update',entity:'cc_item',entityId:Number(req.params.itemId),payload:b,req});res.json({ok:true});
+});
 r.delete('/:id/items/:itemId', roleRequired('admin'), async (req, res) => {
   const ccResult = await db.execute({ sql: 'SELECT * FROM petty_cash WHERE id=? AND company_id=?', args: [req.params.id, req.user.cid] });
   const cc = ccResult.rows[0];

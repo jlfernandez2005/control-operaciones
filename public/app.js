@@ -23,7 +23,7 @@ function setMsg(sel,txt,cls){const e=$(sel);e.textContent=txt;e.className='msg '
     enterApp();
   }catch{
     show('#login-view',true);show('#app-view',false);
-  }
+  }finally{show('#boot-status',false)}
 })();
 
 async function loadAll(){
@@ -111,7 +111,7 @@ function drawReg(){
   const canEdit=state.user.role!=='lector';
   $('#r-tb').innerHTML=L.map(o=>{
     const p=state.prov.find(x=>x.ruc===o.ruc);
-    return`<tr><td>${o.id}</td><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="l">${esc(o.receipt||'')}</td><td class="r">${fm(o.amount)}</td><td>${p?esc(p.cci):''}</td><td class="l">${esc(o.provider_name||p?.name||'Sin registrar')}</td><td>${esc(o.bank)}</td><td>${esc(o.type)}</td><td>${esc(o.category||'Sin clasificar')}</td><td><span class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</span></td><td>${o.signature?'<span class="muted">Generada</span>':''}</td><td>${state.archive?`<button class="btn g" data-act="restore" data-id="${o.id}">Restaurar</button>`:`${canEdit?`<button class="x edit" data-act="eo" data-id="${o.id}">Editar</button>`:''}${isAdmin()?`<button class="x" data-act="del" data-id="${o.id}">Archivar</button>`:''}`}</td></tr>`;
+    return`<tr><td>${o.id}</td><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="l">${esc(o.receipt||'')}${o.order_number?'<small class="im-sub">Orden '+esc(o.order_number)+'</small>':''}</td><td class="r">${fm(o.amount)}</td><td>${esc(o.bank_account||p?.cci||'')}</td><td class="l">${esc(o.provider_name||p?.name||'Sin registrar')}</td><td>${esc(o.bank)}</td><td>${esc(o.type)}</td><td>${esc(o.category||'Sin clasificar')}</td><td><span class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</span></td><td>${o.signature?'<span class="muted">Generada</span>':''}</td><td>${state.archive?`<button class="btn g" data-act="restore" data-id="${o.id}">Restaurar</button>`:`${canEdit?`<button class="x edit" data-act="eo" data-id="${o.id}">Editar</button>`:''}${isAdmin()?`<button class="x" data-act="del" data-id="${o.id}">Archivar</button>`:''}`}</td></tr>`;
   }).join('');
 }
 window.eo=async function(id){
@@ -119,7 +119,7 @@ window.eo=async function(id){
   EDID=id;
   $('#r-f').value=o.date;$('#r-c').value=o.concept;$('#r-p').value=o.receipt||'';
   $('#r-m').value=o.amount;$('#r-r').value=o.ruc;$('#r-e').value=o.status;
-  $('#r-b').value=o.bank;$('#r-t').value=o.type;$('#r-cat').value=o.category||'';$('#r-provider').value=o.provider_name||'';
+  $('#r-b').value=o.bank;$('#r-t').value=o.type;$('#r-cat').value=o.category||'';$('#r-provider').value=o.provider_name||'';$('#r-cci').value=o.bank_account||'';$('#r-order').value=o.order_number||'';
   $('#r-add').textContent='Guardar';$('#op-title').textContent='Editar operación';show('#r-cancel',true);
   document.querySelector('#nav button[data-t="reg"]').click();
 };
@@ -129,12 +129,12 @@ window.del=async function(id){
   await refresh();toast('Operación archivada');
 };
 $('#r-add').onclick=async function(){
-  const body={date:$('#r-f').value,concept:$('#r-c').value.trim(),receipt:$('#r-p').value.trim(),amount:parseFloat($('#r-m').value),ruc:$('#r-r').value.trim(),status:$('#r-e').value,bank:$('#r-b').value,type:$('#r-t').value,category:$('#r-cat').value.trim(),provider_name:$('#r-provider').value.trim()};
+  const body={date:$('#r-f').value,concept:$('#r-c').value.trim(),receipt:$('#r-p').value.trim(),amount:parseFloat($('#r-m').value),ruc:$('#r-r').value.trim(),status:$('#r-e').value,bank:$('#r-b').value,type:$('#r-t').value,category:$('#r-cat').value.trim(),provider_name:$('#r-provider').value.trim(),bank_account:$('#r-cci').value.trim(),order_number:$('#r-order').value.trim()};
   try{
     if(EDID){await api('/ops/'+EDID,{method:'PUT',body});resetOp()}
     else await api('/ops',{method:'POST',body});
     await refresh();toast('Guardado');$('#r-msg').textContent='';
-    ['r-c','r-p','r-m','r-r','r-cat','r-provider'].forEach(i=>{$('#'+i).value=''});
+    ['r-c','r-p','r-m','r-r','r-cat','r-provider','r-cci','r-order'].forEach(i=>{$('#'+i).value=''});
   }catch(e){$('#r-msg').textContent='⚠ '+e.message}
 };
 
@@ -159,17 +159,20 @@ $('#v-add').onclick=async function(){
   }catch(e){$('#v-msg').textContent='⚠ '+e.message}
 };
 
+let editingCash=null;
+function resetCashEdit(){editingCash=null;$('#ci-form').reset();$('#ci-date').value=today();$('#ci-title').textContent='Registrar gasto';show('#ci-cancel',false);}
+$('#ci-cancel').onclick=resetCashEdit;
 function drawCC(preferred){
   const current=preferred||Number($('#c-sel').value);const c=state.cc.find(x=>x.id===current)||state.cc[0];
   $('#c-sel').innerHTML=state.cc.map(x=>`<option value="${x.id}">${esc(x.num||'(sin N°)')}</option>`).join('');if(c)$('#c-sel').value=c.id;
   show('#ci-form',!!c&&canEdit());show('#c-items',!!c);
   if(!c){$('#c-rp').textContent='No hay cajas registradas.';return;}
   const spent=total(c.items);$('#c-rp').innerHTML=`<div class="card"><h2>Caja ${esc(c.num)} · ${esc(c.resp||'')}</h2><div class="k"><div><span>Fondo asignado</span><b>${fm(c.fund)}</b></div><div><span>Gastos registrados</span><b>${fm(spent)}</b></div><div><span>Saldo disponible</span><b class="${c.fund-spent<0?'bad':''}">${fm(c.fund-spent)}</b></div></div></div>`;
-  $('#c-items').innerHTML=`<h2>Detalle de gastos (${c.items.length})</h2><div class="sc"><table><thead><tr><th>Fecha</th><th>Detalle</th><th>Proveedor</th><th>Comprobante</th><th>Monto</th><th>Acción</th></tr></thead><tbody>${c.items.map(i=>`<tr><td>${esc(fd(i.date))}</td><td class="l">${esc(i.detail)}</td><td>${esc(i.provider)}</td><td>${esc(i.receipt)}</td><td class="r">${fm(i.amount)}</td><td>${isAdmin()?`<button class="x" data-act="di" data-id="${i.id}">Eliminar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6">Sin gastos</td></tr>'}</tbody></table></div>`;
+  $('#c-items').innerHTML=`<h2>Detalle de gastos (${c.items.length})</h2><div class="sc"><table><thead><tr><th>Fecha</th><th>Detalle</th><th>Proveedor</th><th>Comprobante</th><th>Rubro</th><th>Monto</th><th>Acción</th></tr></thead><tbody>${c.items.map(i=>`<tr><td>${esc(fd(i.date))}</td><td class="l">${esc(i.detail)}</td><td>${esc(i.provider)}</td><td>${esc(i.receipt)}</td><td>${esc(i.category||'Sin clasificar')}</td><td class="r">${fm(i.amount)}${i.usd?'<small class="im-sub">USD '+esc(i.usd)+'</small>':''}</td><td>${canEdit()?`<button class="x edit" data-act="eci" data-id="${i.id}">Editar</button>`:''} ${isAdmin()?`<button class="x" data-act="di" data-id="${i.id}">Eliminar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7">Sin gastos</td></tr>'}</tbody></table></div>`;
 }
-$('#c-sel').onchange=()=>drawCC();$('#c-new').onclick=()=>show('#c-form',true);$('#c-cancel').onclick=()=>show('#c-form',false);
+$('#c-sel').onchange=()=>{resetCashEdit();drawCC();};$('#c-new').onclick=()=>show('#c-form',true);$('#c-cancel').onclick=()=>show('#c-form',false);
 $('#c-form').onsubmit=run(async e=>{e.preventDefault();const {id}=await api('/cc',{method:'POST',body:{num:$('#c-num').value,resp:$('#c-resp').value,area:$('#c-area').value,fund:Number($('#c-fund').value),from_date:$('#c-from').value||null,to_date:$('#c-to').value||null}});e.target.reset();show('#c-form',false);await refresh();drawCC(id);toast('Caja registrada');});
-$('#ci-form').onsubmit=run(async e=>{e.preventDefault();const id=$('#c-sel').value;await api(`/cc/${id}/items`,{method:'POST',body:{date:$('#ci-date').value,detail:$('#ci-detail').value,provider:$('#ci-provider').value,receipt:$('#ci-receipt').value,amount:Number($('#ci-amount').value),category:$('#ci-cat').value.trim()||FinanceCore.suggestCategory($('#ci-detail').value)}});e.target.reset();$('#ci-date').value=today();await refresh();toast('Gasto registrado');});
+$('#ci-form').onsubmit=run(async e=>{e.preventDefault();const id=$('#c-sel').value;await api(`/cc/${id}/items${editingCash?'/'+editingCash:''}`,{method:editingCash?'PUT':'POST',body:{ruc:$('#ci-ruc').value.trim(),usd:$('#ci-usd').value?Number($('#ci-usd').value):null,date:$('#ci-date').value,detail:$('#ci-detail').value,provider:$('#ci-provider').value,receipt:$('#ci-receipt').value,amount:Number($('#ci-amount').value),category:$('#ci-cat').value.trim()||FinanceCore.suggestCategory($('#ci-detail').value)}});resetCashEdit();await refresh();toast('Gasto guardado');});
 async function drawUsr(){
   if(state.user.role!=='admin')return;
   const list=await api('/users');
@@ -217,10 +220,10 @@ $('#d-export-all').onclick=async function(){
   a.click();
 };
 
-function resetOp(){EDID=null;$('#r-add').textContent='Agregar';$('#op-title').textContent='Nueva operación';show('#r-cancel',false);['r-c','r-p','r-m','r-r','r-cat','r-provider'].forEach(i=>$('#'+i).value='');}
+function resetOp(){EDID=null;$('#r-add').textContent='Agregar';$('#op-title').textContent='Nueva operación';show('#r-cancel',false);['r-c','r-p','r-m','r-r','r-cat','r-provider','r-cci','r-order'].forEach(i=>$('#'+i).value='');}
 $('#r-cancel').onclick=resetOp;['#r-fm','#r-search','#r-status','#r-category-filter'].forEach(id=>$(id).addEventListener('input',drawReg));$('#m-m').onchange=drawRes;$('#d-new').onclick=()=>document.querySelector('#nav button[data-t=reg]').click();$('#d-import').onclick=()=>document.querySelector('#nav button[data-t=imp]').click();$('#d-finance').onclick=()=>document.querySelector('#nav button[data-t=fin]').click();
 $('#r-archive').onclick=run(async()=>{if(!state.archive)state.deleted=await api('/ops?deleted=true');state.archive=!state.archive;$('#r-archive').textContent=state.archive?'Ver operaciones':'Ver papelera';show('#op-form',canEdit()&&!state.archive);resetOp();drawReg();});
-const actions={eo:window.eo,del:window.del,dp:window.dp,du:window.du,restore:async id=>{await api(`/ops/${id}/restore`,{method:'POST',body:{}});state.deleted=await api('/ops?deleted=true');await refresh();toast('Restaurada');},di:async id=>{if(confirm('¿Eliminar gasto?')){await api(`/cc/${$('#c-sel').value}/items/${id}`,{method:'DELETE'});await refresh();}},reset:async id=>{const password=prompt('Contraseña temporal (mínimo 12 caracteres)');if(password){await api(`/users/${id}/reset-password`,{method:'POST',body:{password}});toast('Contraseña temporal asignada');await drawUsr();}}};
+const actions={eci:id=>{const c=state.cc.find(x=>x.id===Number($('#c-sel').value)),i=c?.items.find(x=>x.id===id);if(!i)return;editingCash=id;for(const [k,v] of Object.entries({date:i.date,detail:i.detail,provider:i.provider,receipt:i.receipt,cat:i.category,amount:i.amount,ruc:i.ruc,usd:i.usd}))$('#ci-'+k).value=v??'';$('#ci-title').textContent='Editar gasto';show('#ci-cancel',true);$('#ci-form').scrollIntoView({block:'start'});},eo:window.eo,del:window.del,dp:window.dp,du:window.du,restore:async id=>{await api(`/ops/${id}/restore`,{method:'POST',body:{}});state.deleted=await api('/ops?deleted=true');await refresh();toast('Restaurada');},di:async id=>{if(confirm('¿Eliminar gasto?')){await api(`/cc/${$('#c-sel').value}/items/${id}`,{method:'DELETE'});await refresh();}},reset:async id=>{const password=prompt('Contraseña temporal (mínimo 12 caracteres)');if(password){await api(`/users/${id}/reset-password`,{method:'POST',body:{password}});toast('Contraseña temporal asignada');await drawUsr();}}};
 document.addEventListener('click',run(async e=>{const b=e.target.closest('[data-act]');if(b&&actions[b.dataset.act]){b.disabled=true;try{await actions[b.dataset.act](Number(b.dataset.id));}finally{b.disabled=false;}}}));
 for(const id of ['#r-add','#v-add','#nu-add']){const fn=$(id).onclick;$(id).onclick=run(fn);}
 for(const id of ['#login-form','#firstpass-form']){const fn=$(id).onsubmit;$(id).onsubmit=run(fn);}

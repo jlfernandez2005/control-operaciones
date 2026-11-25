@@ -1,3 +1,18 @@
+## 3.5.2 · Identidad oficial SISFIA
+
+- Logo oficial proporcionado por el usuario, con emblema para iconos y favicon.
+- Acceso y cabecera adaptables, contraste en modo oscuro e indicador de comprobación de sesión.
+- Renovación de caché PWA. Se conservan módulos y migraciones de 3.5.0.
+
+## 3.5.0 · Importación inteligente
+
+- PDF por geometría de celdas: resumen institucional de pagos, operaciones y caja chica clásica/v2; anexos excluidos.
+- XLSX/CSV por encabezados y fechas, con celdas verticales combinadas en XLSX.
+- Revisión compacta, edición modal, exclusión reversible, añadir filas, carga de otro informe y estados en bloque.
+- Caja chica atómica con control de número duplicado, origen, categoría original y USD de referencia.
+- Cuenta/CCI y orden persistidos en operaciones; edición de gastos de caja registrados. Migraciones aditivas.
+- Pruebas: seis PDF reales con totales coincidentes, regresiones de moneda/Excel/SQLite, pruebas estáticas y navegación simulada.
+
 # Cambios
 
 ## 3.3.0
