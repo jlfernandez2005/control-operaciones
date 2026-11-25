@@ -1,43 +1,16 @@
 import express from 'express';
 import crypto from 'node:crypto';
-import { db } from '../db.js';
-import { authRequired, roleRequired } from '../auth.js';
-import { audit } from '../audit.js';
-
-const r = express.Router();
-r.use(authRequired);
-
-r.get('/', async (req, res) => {
-  const { month } = req.query;
-  let result;
-  if (month) {
-    result = await db.execute({ sql: 'SELECT * FROM ops WHERE company_id=? AND substr(date,1,7)=? ORDER BY date DESC, id DESC', args: [req.user.cid, month] });
-  } else {
-    result = await db.execute({ sql: 'SELECT * FROM ops WHERE company_id=? ORDER BY date DESC, id DESC', args: [req.user.cid] });
-  }
-  res.json(result.rows);
-});
-
-r.post('/', roleRequired('admin', 'editor'), async (req, res) => {
-  const { date, concept, receipt, amount, ruc, status, bank, type } = req.body;
-  if (!date || !concept || amount == null || !ruc) return res.status(400).json({ error: 'Faltan datos' });
-  const signature = crypto.createHash('sha256').update(`${date}|${concept}|${amount}|${ruc}|${Date.now()}`).digest('hex');
-  
-  const info = await db.execute({
-    sql: 'INSERT INTO ops (company_id, date, concept, receipt, amount, ruc, status, bank, type, signature, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-    args: [req.user.cid, date, concept, receipt || '', amount, ruc, status || 'Pendiente', bank || 'Scotiabank', type || 'General', signature, req.user.uid]
-  });
-  
-  await audit({ companyId: req.user.cid, userId: req.user.uid, action: 'create', entity: 'op', entityId: Number(info.lastInsertRowid), payload: req.body, req });
-  res.status(201).json({ id: Number(info.lastInsertRowid), signature });
-});
-
-r.delete('/:id', roleRequired('admin'), async (req, res) => {
-  const curRes = await db.execute({ sql: 'SELECT * FROM ops WHERE id=? AND company_id=?', args: [req.params.id, req.user.cid] });
-  if (!curRes.rows[0]) return res.status(404).json({ error: 'No encontrada' });
-  await db.execute({ sql: 'DELETE FROM ops WHERE id=?', args: [req.params.id] });
-  await audit({ companyId: req.user.cid, userId: req.user.uid, action: 'delete', entity: 'op', entityId: Number(req.params.id), req });
-  res.json({ ok: true });
-});
-
+import {z} from 'zod';
+import {db} from '../db.js';
+import {authRequired,roleRequired} from '../auth.js';
+import {audit} from '../audit.js';
+import {validate,text,optionalText,date,money,doc} from '../validation.js';
+const r=express.Router();r.use(authRequired);
+const schema=z.object({date,concept:text(500),receipt:optionalText(200),amount:money,ruc:doc,status:z.enum(['Pendiente','Pagado']).default('Pendiente'),bank:text(80).default('Scotiabank'),type:text(80).default('General')});
+const sig=b=>crypto.createHash('sha256').update(JSON.stringify(b)+crypto.randomUUID()).digest('hex');
+const vals=b=>[b.date,b.concept,b.receipt,b.amount,b.ruc,b.status,b.bank,b.type];
+r.get('/',async(req,res)=>{const {month,deleted}=req.query;const archive=deleted==='true';if(archive&&req.user.role!=='admin')return res.status(403).json({error:'Sin permisos'});if(month&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return res.status(400).json({error:'Mes inválido'});res.json((await db.execute({sql:`SELECT * FROM ops WHERE company_id=? AND deleted_at IS ${archive?'NOT ':''}NULL ${month?'AND substr(date,1,7)=?':''} ORDER BY date DESC,id DESC`,args:month?[req.user.cid,month]:[req.user.cid]})).rows);});
+r.post('/',roleRequired('admin','editor'),async(req,res)=>{const b=validate(schema,req,res);if(!b)return;const signature=sig(b);const q=await db.execute({sql:'INSERT INTO ops (company_id,date,concept,receipt,amount,ruc,status,bank,type,signature,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)',args:[req.user.cid,...vals(b),signature,req.user.uid]});const id=Number(q.lastInsertRowid);await audit({companyId:req.user.cid,userId:req.user.uid,action:'create',entity:'op',entityId:id,payload:b,req});res.status(201).json({id,signature});});
+r.put('/:id',roleRequired('admin','editor'),async(req,res)=>{const b=validate(schema,req,res);if(!b)return;const old=(await db.execute({sql:'SELECT * FROM ops WHERE id=? AND company_id=? AND deleted_at IS NULL',args:[req.params.id,req.user.cid]})).rows[0];if(!old)return res.status(404).json({error:'Operación no encontrada'});const signature=sig(b);const q=await db.execute({sql:'UPDATE ops SET date=?,concept=?,receipt=?,amount=?,ruc=?,status=?,bank=?,type=?,signature=? WHERE id=? AND company_id=? AND deleted_at IS NULL AND signature IS ?',args:[...vals(b),signature,req.params.id,req.user.cid,old.signature]});if(!q.rowsAffected)return res.status(409).json({error:'La operación cambió. Actualiza la página.'});await audit({companyId:req.user.cid,userId:req.user.uid,action:'update',entity:'op',entityId:Number(req.params.id),payload:{before:old,after:b},req});res.json({ok:true,signature});});
+for(const [method,route,action,condition,value] of [['delete','/:id','delete','IS NULL',"datetime('now')"],['post','/:id/restore','restore','IS NOT NULL','NULL']])r[method](route,roleRequired('admin'),async(req,res)=>{const q=await db.execute({sql:`UPDATE ops SET deleted_at=${value} WHERE id=? AND company_id=? AND deleted_at ${condition}`,args:[req.params.id,req.user.cid]});if(!q.rowsAffected)return res.status(404).json({error:'Operación no encontrada'});await audit({companyId:req.user.cid,userId:req.user.uid,action,entity:'op',entityId:Number(req.params.id),req});res.json({ok:true});});
 export default r;

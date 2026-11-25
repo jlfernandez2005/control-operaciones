@@ -4,6 +4,6 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 15000,
     hookTimeout: 15000,
-    exclude: ['node_modules', 'data', 'tests/e2e']
+    include: ['tests/api.test.js','tests/core.test.js']
   }
 });

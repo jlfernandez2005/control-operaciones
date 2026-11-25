@@ -1,53 +1,27 @@
-import express from 'express';
 import bcrypt from 'bcryptjs';
-import { db } from '../db.js';
-import { signToken, checkPassword, authRequired, hashPassword } from '../auth.js';
-import { audit } from '../audit.js';
-import { z } from 'zod';
+import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
+import { db } from './db.js';
 
-const r = express.Router();
-const loginSchema = z.object({ companyCode: z.string(), username: z.string(), password: z.string() });
-
-r.post('/login', async (req, res) => {
-  const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos' });
-  const { companyCode, username, password } = parsed.data;
-  
-  const companyRes = await db.execute({ sql: 'SELECT * FROM companies WHERE code=?', args: [companyCode.toUpperCase()] });
-  const company = companyRes.rows[0];
-  if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
-  
-  const user = await checkPassword(username, password, company.id);
-  if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
-  
-  const token = signToken(user);
-  res.cookie('token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.COOKIE_SECURE === 'true', maxAge: 8 * 60 * 60 * 1000 });
-  
-  await audit({ companyId: company.id, userId: user.id, action: 'login', entity: 'auth', req });
-  res.json({ user: { id: user.id, username: user.username, name: user.name, role: user.role }, mustChange: !!user.must_change, company: { id: company.id, name: company.name, code: company.code } });
-});
-
-r.post('/logout', authRequired, async (req, res) => {
-  await audit({ companyId: req.user.cid, userId: req.user.uid, action: 'logout', entity: 'auth', req });
-  res.clearCookie('token').json({ ok: true });
-});
-
-r.get('/me', authRequired, async (req, res) => {
-  const uRes = await db.execute({ sql: 'SELECT id, username, name, role, must_change FROM users WHERE id=?', args: [req.user.uid] });
-  const u = uRes.rows[0];
-  if (!u) return res.status(401).json({ error: 'Usuario no encontrado' });
-  const cRes = await db.execute({ sql: 'SELECT id, name, code FROM companies WHERE id=?', args: [req.user.cid] });
-  res.json({ user: { ...u, mustChange: !!u.must_change }, company: cRes.rows[0] });
-});
-
-r.post('/change-password', authRequired, async (req, res) => {
-  const { newPassword, question, answer } = req.body;
-  if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
-  const hash = await hashPassword(newPassword);
-  const aHash = question && answer ? await hashPassword(answer.trim().toLowerCase()) : null;
-  await db.execute({ sql: 'UPDATE users SET pass_hash=?, must_change=0, q=?, a_hash=? WHERE id=?', args: [hash, question || null, aHash, req.user.uid] });
-  await audit({ companyId: req.user.cid, userId: req.user.uid, action: 'change_password', entity: 'user', entityId: req.user.uid, req });
-  res.json({ ok: true });
-});
-
-export default r;
+const secret = process.env.JWT_SECRET;
+if (!secret || secret.length < 32) throw new Error('JWT_SECRET debe tener al menos 32 caracteres.');
+const stamp = u => crypto.createHmac('sha256', secret).update(u.pass_hash).digest('hex');
+export const hashPassword = p => bcrypt.hash(p, 12);
+export const cookieOptions = { httpOnly: true, sameSite: 'lax', secure: process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false'), path: '/' };
+export const signToken = u => jwt.sign({ uid: u.id, cid: u.company_id, v: stamp(u) }, secret, { algorithm: 'HS256', expiresIn: '8h', issuer: 'control-ops', audience: 'control-ops' });
+export async function checkPassword(username, password, cid) {
+  const u = (await db.execute({sql:'SELECT * FROM users WHERE company_id=? AND username=? AND active=1',args:[cid,username]})).rows[0];
+  return u && await bcrypt.compare(password,u.pass_hash) ? u : null;
+}
+export async function authRequired(req,res,next) {
+  let token;
+  try { token = jwt.verify(req.cookies.token,secret,{algorithms:['HS256'],issuer:'control-ops',audience:'control-ops'}); } catch { return res.status(401).json({error:'Inicia sesión nuevamente'}); }
+  try {
+    const u = (await db.execute({sql:'SELECT * FROM users WHERE id=? AND company_id=? AND active=1',args:[token.uid,token.cid]})).rows[0];
+    if (!u || token.v !== stamp(u)) return res.status(401).json({error:'Sesión inválida'});
+    req.user={uid:u.id,cid:u.company_id,role:u.role,mustChange:!!u.must_change};
+    if (u.must_change && !(req.baseUrl==='/api/auth' && ['/me','/change-password','/logout'].includes(req.path))) return res.status(403).json({error:'Debes cambiar tu contraseña primero'});
+    next();
+  } catch(e){next(e);}
+}
+export const roleRequired = (...roles) => (req,res,next) => roles.includes(req.user?.role) ? next() : res.status(403).json({error:'No tienes permisos para esta acción'});

@@ -10,9 +10,9 @@
 </head>
 <body>
 
-<div id="login-view" class="login-wrap hidden">
+<div id="login-view" class="login-wrap">
   <div class="login-card">
-    <h1 style="text-align:center">Control de Operaciones</h1>
+    <div class="login-mark">CO</div><div class="eyebrow">GESTIÓN ADMINISTRATIVA</div><h1>Control de Operaciones</h1>
     <div style="text-align:center;color:var(--mut);font-size:12px;margin-bottom:18px">La Salle Lima</div>
     <form id="login-form">
       <div class="field"><label for="l-company">Código de empresa</label><input id="l-company" value="LSALLE" required></div>
@@ -23,38 +23,29 @@
       <div style="text-align:right;margin-top:8px"><button type="button" class="link" id="go-recover">¿Olvidaste tu contraseña?</button></div>
     </form>
     <form id="firstpass-form" class="hidden">
-      <div class="field"><label for="fp-pass">Nueva contraseña</label><input id="fp-pass" type="password" required minlength="6"></div>
-      <div class="field"><label for="fp-q">Pregunta de seguridad</label><input id="fp-q"></div>
-      <div class="field"><label for="fp-a">Respuesta</label><input id="fp-a"></div>
+      <div class="field"><label for="fp-pass">Nueva contraseña</label><input id="fp-pass" type="password" required minlength="12"></div>
+      <p class="muted">Por seguridad, establece una contraseña de al menos 12 caracteres.</p>
       <button class="btn block" type="submit">Guardar y entrar</button>
       <div id="fp-msg" class="msg"></div>
     </form>
-    <form id="recover-form" class="hidden">
-      <div class="field"><label for="r-company">Código de empresa</label><input id="r-company" value="LSALLE" required></div>
-      <div class="field"><label for="r-user">Usuario</label><input id="r-user" required></div>
-      <div class="field"><label for="r-ans">Respuesta de seguridad</label><input id="r-ans" required></div>
-      <div class="field"><label for="r-new">Nueva contraseña</label><input id="r-new" type="password" required minlength="6"></div>
-      <button class="btn block" type="submit">Recuperar</button>
-      <div id="r-msg2" class="msg"></div>
-      <button type="button" class="link" id="go-login">Volver</button>
-    </form>
+    <div id="recover-form" class="hidden"><h2>Recuperar acceso</h2><p>Solicita al administrador de tu institución una contraseña temporal. Deberás cambiarla al ingresar.</p><button type="button" class="btn g" id="go-login">Volver</button></div>
   </div>
 </div>
 
 <div id="app-view" class="hidden">
 <header class="top">
   <div class="top-in">
-    <div class="brand">Control de Operaciones</div>
+    <div class="brand"><span class="brand-mark">CO</span><div>Control de Operaciones<small id="company-name">La Salle Lima</small></div></div>
     <div class="spacer"></div>
     <div class="userbox">
       <div class="avatar" id="avatar">A</div>
       <div><div id="u-name" style="font-weight:700">—</div><div class="role" id="u-role">—</div></div>
-      <button class="icon-btn" id="btn-theme">◐</button>
-      <button class="icon-btn" id="btn-logout">Salir</button>
+      <button class="icon-btn" id="btn-theme" aria-label="Cambiar tema">◐</button>
+      <button class="icon-btn" id="btn-password" aria-label="Cambiar contraseña">Clave</button><button class="icon-btn" id="btn-logout">Salir</button>
     </div>
   </div>
 </header>
-<div class="w">
+<div class="w layout">
 <nav class="tabs" id="nav">
   <button data-t="dash" aria-selected="true">Inicio</button>
   <button data-t="reg" aria-selected="false">Registro</button>
@@ -64,12 +55,13 @@
   <button data-t="usr" aria-selected="false" id="tab-usr" style="display:none">Usuarios</button>
   <button data-t="aud" aria-selected="false" id="tab-aud" style="display:none">Auditoría</button>
 </nav>
+<main class="workspace"><form id="password-form" class="card hidden"><h2>Cambiar contraseña</h2><div class="f"><div><label for="pw-current">Contraseña actual</label><input id="pw-current" type="password" autocomplete="current-password" required></div><div><label for="pw-new">Nueva contraseña</label><input id="pw-new" type="password" autocomplete="new-password" minlength="12" required></div><button class="btn" type="submit">Actualizar</button><button class="btn g" type="button" id="pw-cancel">Cancelar</button></div></form>
 
 <section class="sec on" id="t-dash">
-  <div class="k" id="d-k"></div>
+  <div class="hero"><div><div class="eyebrow">VISTA GENERAL</div><h1>Panel de control</h1><p>Consulta tus operaciones, pagos y fondos en un solo lugar.</p></div><span id="today-label" class="period"></span></div><div class="k" id="d-k"></div>
   <div class="card"><h2>Accesos rápidos</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" onclick="document.querySelector('#nav button[data-t=reg]').click()">+ Nueva operación</button>
+      <button class="btn" id="d-new">+ Nueva operación</button>
       <button class="btn g" id="d-export-all">Exportar todo</button>
     </div>
   </div>
@@ -77,7 +69,7 @@
 </section>
 
 <section class="sec" id="t-reg">
-  <div class="card"><h2>Nueva operación</h2>
+  <div class="card" id="op-form"><h2 id="op-title">Nueva operación</h2>
     <div class="f">
       <div><label for="r-f">Fecha</label><input type="date" id="r-f"></div>
       <div style="grid-column:span 2"><label for="r-c">Concepto</label><input id="r-c"></div>
@@ -87,13 +79,13 @@
       <div><label for="r-e">Estado</label><select id="r-e"><option>Pendiente</option><option>Pagado</option></select></div>
       <div><label for="r-b">Banco</label><select id="r-b"><option>Scotiabank</option><option>Interbank</option></select></div>
       <div><label for="r-t">Tipo</label><select id="r-t"><option>General</option><option>Talleres</option><option>SUNAT</option></select></div>
-      <div><button class="btn" id="r-add">Agregar</button></div>
+      <div><button class="btn" id="r-add">Agregar</button> <button class="btn g hidden" id="r-cancel">Cancelar</button></div>
     </div>
     <datalist id="dl"></datalist>
     <div id="r-msg" class="msg"></div>
   </div>
-  <div class="card"><h2>Operaciones</h2>
-    <div class="sc"><table><thead><tr><th>ID</th><th>Fecha</th><th>Concepto</th><th>Comprobante</th><th>Monto</th><th>CCI</th><th>Proveedor</th><th>Banco</th><th>Tipo</th><th>Estado</th><th>Firma</th><th></th></tr></thead><tbody id="r-tb"></tbody></table></div>
+  <div class="card"><h2>Operaciones</h2><div class="f filters"><div><label for="r-fm">Mes</label><input type="month" id="r-fm"></div><div><label for="r-search">Buscar</label><input id="r-search" placeholder="Concepto, RUC o proveedor"></div><div><label for="r-status">Estado</label><select id="r-status"><option value="">Todos</option><option>Pendiente</option><option>Pagado</option></select></div><div><button class="btn g hidden" id="r-archive">Ver papelera</button></div></div><p id="r-count" class="muted"></p>
+    <div class="sc"><table><thead><tr><th>ID</th><th>Fecha</th><th>Concepto</th><th>Comprobante</th><th>Monto</th><th>CCI</th><th>Proveedor</th><th>Banco</th><th>Tipo</th><th>Estado</th><th>Referencia</th><th></th></tr></thead><tbody id="r-tb"></tbody></table></div>
   </div>
 </section>
 
@@ -103,7 +95,7 @@
 </section>
 
 <section class="sec" id="t-prv">
-  <div class="card"><h2>Nuevo proveedor</h2>
+  <div class="card" id="prov-form"><h2>Nuevo proveedor</h2>
     <div class="f">
       <div><label for="v-r">RUC / DNI</label><input id="v-r"></div>
       <div style="grid-column:span 2"><label for="v-n">Nombre</label><input id="v-n"></div>
@@ -118,9 +110,10 @@
 
 <section class="sec" id="t-cc">
   <div class="card"><h2>Caja chica</h2>
-    <div class="f"><div><label for="c-sel">Seleccionar</label><select id="c-sel"></select></div><div><button class="btn" id="c-new">Nueva</button></div></div>
+    <div class="f"><div><label for="c-sel">Seleccionar</label><select id="c-sel"></select></div><div><button class="btn" id="c-new">Nueva caja</button></div></div>
   </div>
-  <div id="c-rp"></div>
+  <form id="c-form" class="card hidden"><h2>Registrar caja chica</h2><div class="f"><div><label for="c-num">Número</label><input id="c-num" required></div><div><label for="c-resp">Responsable</label><input id="c-resp" required></div><div><label for="c-area">Área</label><input id="c-area"></div><div><label for="c-fund">Fondo (S/)</label><input id="c-fund" type="number" min="0.01" step="0.01" required></div><div><label for="c-from">Desde</label><input id="c-from" type="date"></div><div><label for="c-to">Hasta</label><input id="c-to" type="date"></div><button class="btn" type="submit">Crear caja</button><button class="btn g" type="button" id="c-cancel">Cancelar</button></div></form>
+  <div id="c-rp"></div><form id="ci-form" class="card hidden"><h2>Registrar gasto</h2><div class="f"><div><label for="ci-date">Fecha</label><input type="date" id="ci-date" required></div><div><label for="ci-detail">Detalle</label><input id="ci-detail" required></div><div><label for="ci-provider">Proveedor</label><input id="ci-provider"></div><div><label for="ci-receipt">Comprobante</label><input id="ci-receipt"></div><div><label for="ci-amount">Monto (S/)</label><input type="number" min="0.01" step="0.01" id="ci-amount" required></div><button class="btn" type="submit">Guardar gasto</button></div></form><div id="c-items" class="card hidden"></div>
 </section>
 
 <section class="sec" id="t-usr">
@@ -148,7 +141,7 @@
           <option value="logout">logout</option>
           <option value="create">create</option>
           <option value="update">update</option>
-          <option value="delete">delete</option>
+          <option value="delete">delete</option><option value="restore">restore</option><option value="reset_password">reset_password</option>
           <option value="status">status</option>
           <option value="change_password">change_password</option>
         </select>
@@ -187,10 +180,11 @@
     </div>
   </div>
 </section>
+</main>
 </div>
 </div>
 
-<div id="ts" class="toast"></div>
+<div id="ts" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/app-core.js"></script>
 <script src="/app.js"></script>

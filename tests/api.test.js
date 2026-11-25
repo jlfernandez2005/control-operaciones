@@ -1,38 +1,19 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import {describe,it,expect,beforeAll,afterAll} from 'vitest';
 import request from 'supertest';
-import { spawn } from 'node:child_process';
-
-let server;
-const URL = 'http://localhost:3100';
-
-beforeAll(async () => {
-  process.env.DB_PATH = './data/test.db';
-  process.env.JWT_SECRET = 'test-secret';
-  server = spawn('node', ['server/index.js'], { env: { ...process.env, PORT: '3100' }, stdio: 'ignore' });
-  await new Promise(r => setTimeout(r, 2000));
-});
-afterAll(() => { server.kill(); });
-
-describe('api', () => {
-  let cookie;
-  it('login admin', async () => {
-    const r = await request(URL).post('/api/auth/login').send({ companyCode: 'LSALLE', username: 'admin', password: 'admin123' });
-    expect(r.status).toBe(200);
-    expect(r.body.user.role).toBe('admin');
-    cookie = r.headers['set-cookie'];
-  });
-  it('crea operación', async () => {
-    const r = await request(URL).post('/api/ops').set('Cookie', cookie).send({ date: '2026-11-10', concept: 'Test', amount: 100, ruc: '10062021476' });
-    expect(r.status).toBe(201);
-    expect(r.body.signature).toBeTruthy();
-  });
-  it('lista operaciones', async () => {
-    const r = await request(URL).get('/api/ops').set('Cookie', cookie);
-    expect(r.status).toBe(200);
-    expect(Array.isArray(r.body)).toBe(true);
-  });
-  it('rechaza sin auth', async () => {
-    const r = await request(URL).get('/api/ops');
-    expect(r.status).toBe(401);
-  });
+import {spawn} from 'node:child_process';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+let server,dir,admin,op,reader;
+const url='http://127.0.0.1:3100', initial='Test-initial-2026!', changed='Test-changed-2026!';
+const login=(username,password)=>request(url).post('/api/auth/login').send({companyCode:'LSALLE',username,password});
+const operation={date:'2026-11-10',concept:'Prueba',amount:100,ruc:'10000000000'};
+beforeAll(async()=>{dir=mkdtempSync(path.join(tmpdir(),'ops-test-'));const env={...process.env,PORT:'3100',DB_PATH:path.join(dir,'test.db'),JWT_SECRET:'test-secret-is-long-enough-for-tests',ADMIN_USER:'admin',ADMIN_PASS:initial,COMPANY_CODE:'LSALLE',NODE_ENV:'test',COOKIE_SECURE:'false',TURSO_DATABASE_URL:'',TURSO_AUTH_TOKEN:'',APP_ORIGIN:'',TRUST_PROXY:'0'};server=spawn('node',['server/index.js'],{env,stdio:'inherit'});for(let i=0;i<80;i++){try{if((await fetch(url)).ok)return;}catch{}await new Promise(r=>setTimeout(r,150));}throw Error('Servidor no inició');});
+afterAll(async()=>{if(server&&server.exitCode===null){server.kill();await new Promise(r=>server.once('exit',r));}if(dir)rmSync(dir,{recursive:true,force:true});});
+describe('API',()=>{
+ it('requiere autenticación y cambio inicial',async()=>{expect((await request(url).get('/api/ops')).status).toBe(401);const r=await login('admin',initial);expect(r.status).toBe(200);admin=r.headers['set-cookie'];expect((await request(url).get('/api/ops').set('Cookie',admin)).status).toBe(403);const c=await request(url).post('/api/auth/change-password').set('Cookie',admin).send({newPassword:changed});expect(c.status).toBe(200);const previous=admin;admin=c.headers['set-cookie'];expect((await request(url).get('/api/auth/me').set('Cookie',previous)).status).toBe(401);});
+ it('valida datos y crea, edita y archiva',async()=>{expect((await request(url).post('/api/ops').set('Cookie',admin).send({...operation,amount:-1})).status).toBe(400);const r=await request(url).post('/api/ops').set('Cookie',admin).send(operation);expect(r.status).toBe(201);op=r.body.id;expect((await request(url).put('/api/ops/'+op).set('Cookie',admin).send({...operation,status:'Pagado'})).status).toBe(200);expect((await request(url).delete('/api/ops/'+op).set('Cookie',admin)).status).toBe(200);expect((await request(url).get('/api/ops').set('Cookie',admin)).body).toHaveLength(0);expect((await request(url).get('/api/ops?deleted=true').set('Cookie',admin)).body).toHaveLength(1);expect((await request(url).post('/api/ops/'+op+'/restore').set('Cookie',admin).send({})).status).toBe(200);});
+ it('auditoría, respaldo y caja chica',async()=>{expect((await request(url).get('/api/audit').set('Cookie',admin)).body.total).toBeGreaterThan(0);expect((await request(url).get('/api/export/all.json').set('Cookie',admin)).status).toBe(200);const c=await request(url).post('/api/cc').set('Cookie',admin).send({num:'001',resp:'Prueba',fund:100});expect(c.status).toBe(201);expect((await request(url).post(`/api/cc/${c.body.id}/items`).set('Cookie',admin).send({date:operation.date,detail:'Gasto',amount:10})).status).toBe(201);});
+ it('lector no modifica y se revoca al desactivarlo',async()=>{const u=await request(url).post('/api/users').set('Cookie',admin).send({username:'reader',name:'Lector',role:'lector',password:initial});expect(u.status).toBe(201);reader=(await login('reader',initial)).headers['set-cookie'];reader=(await request(url).post('/api/auth/change-password').set('Cookie',reader).send({newPassword:changed})).headers['set-cookie'];expect((await request(url).get('/api/ops').set('Cookie',reader)).status).toBe(200);expect((await request(url).post('/api/ops').set('Cookie',reader).send(operation)).status).toBe(403);expect((await request(url).get('/api/export/all.json').set('Cookie',reader)).status).toBe(403);await request(url).delete('/api/users/'+u.body.id).set('Cookie',admin);expect((await request(url).get('/api/ops').set('Cookie',reader)).status).toBe(401);});
+ it('rechaza origen cruzado',async()=>{expect((await request(url).post('/api/ops').set('Cookie',admin).set('Origin','https://other.example').send(operation)).status).toBe(403);});
 });

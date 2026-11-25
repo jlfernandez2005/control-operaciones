@@ -1,7 +1,7 @@
 {
   "name": "control-operaciones",
-  "version": "3.2.0",
-  "description": "Control de Operaciones y Pagos · La Salle",
+  "version": "3.3.0",
+  "description": "Control de Operaciones y Pagos \u00b7 La Salle",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
@@ -15,7 +15,8 @@
     "db:init": "node server/db.js --init",
     "db:seed": "node server/db.js --seed",
     "db:seed:full": "node server/seed-extended.js",
-    "migrate:v2": "node scripts/migrate-v2-to-v3.js"
+    "migrate:v2": "node scripts/migrate-v2-to-v3.js",
+    "test:static": "node --test tests/static.test.cjs"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
@@ -35,5 +36,7 @@
     "supertest": "^7.0.0",
     "vitest": "^2.1.1"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
