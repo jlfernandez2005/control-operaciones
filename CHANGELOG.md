@@ -1,3 +1,9 @@
+## 3.6.6
+- Directorio automático de proveedores y beneficiarios basado en operaciones y caja chica; filtros, paginación, alertas y autocompletado de nombres por identificación no ambigua. Sin migración de datos.
+
+## 3.6.5
+- Importación de resúmenes mensuales por encabezado, fechas y total. Una referencia por mes, sin duplicar operaciones. Conciliación diaria y proyección con faltante pendiente de desglose.
+
 ## 3.6.4
 - Zona de arrastrar y soltar PDF, XLSX y CSV; análisis automático de un informe a la vez.
 - Caja chica: total corregible y diferencias justificadas; fondo independiente, saldo disponible o por reembolsar.
@@ -50,3 +56,15 @@
 - Rubros personalizables y clasificación masiva.
 - Reportes filtrables, agrupaciones y exportación PDF/XLSX.
 - Migración aditiva y motor de documentos integrado en Docker.
+
+## 3.6.7
+- Clasificación por familias y rubros, reglas ampliadas a partir del catálogo observado.
+- Panel anual/mensual, comparativo de resúmenes, pagos, presupuesto y cajas por conciliar.
+- Diseño a todo el ancho disponible, adaptable a móvil.
+- Sin migración destructiva; conserva el directorio de 3.6.6 y los datos históricos.
+
+## 3.6.8
+- Elimina el límite visual de 12 grupos en Rubros y reportes; muestra todos los rubros y agrupaciones del periodo.
+- Contador de grupos visibles, incluidos resultados vacíos.
+- Actualización de caché PWA; sin cambios en la base de datos.
+- Pruebas de regresión de gráfico, tabla y exportaciones con 34 grupos.

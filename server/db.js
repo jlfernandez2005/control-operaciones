@@ -21,7 +21,7 @@ export async function initSchema(){
   for(const [name,definition] of Object.entries({category:"TEXT NOT NULL DEFAULT 'Sin clasificar'",provider_name:"TEXT NOT NULL DEFAULT ''",import_batch:'TEXT',source_file:'TEXT',source_ref:'TEXT',bank_account:"TEXT NOT NULL DEFAULT ''",order_number:"TEXT NOT NULL DEFAULT ''",usd_reference:"REAL"})){
     if(!cols.some(c=>c.name===name)) await db.execute(`ALTER TABLE ops ADD COLUMN ${name} ${definition}`);
   }
-  for(const [table,fields] of Object.entries({petty_cash:{import_batch:'TEXT',report_date:'TEXT',source_file:'TEXT'},petty_items:{source_ref:'TEXT',source_category:'TEXT'}})){
+  for(const [table,fields] of Object.entries({petty_cash:{import_batch:'TEXT',report_date:'TEXT',source_file:'TEXT'},petty_items:{source_ref:'TEXT',source_category:'TEXT'},budget_month_refs:{details_json:'TEXT',declared_cents:'INTEGER'}})){
     const existing=(await db.execute(`PRAGMA table_info(${table})`)).rows;
     for(const [name,definition] of Object.entries(fields))if(!existing.some(c=>c.name===name))await db.execute(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
   }

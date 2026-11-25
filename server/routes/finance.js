@@ -5,7 +5,7 @@ import {db} from '../db.js';
 import {authRequired,roleRequired} from '../auth.js';
 import {audit} from '../audit.js';
 import {date,money,text,optionalText,validate} from '../validation.js';
-import {categories,suggestCategory,isTotal,dims,groupsFor,normalize,fingerprint} from '../finance-core.js';
+import {categories,suggestCategory,familyFor,isTotal,dims,groupsFor,normalize,fingerprint} from '../finance-core.js';
 import {financeWorker} from '../finance-worker.js';
 import {reconcileCash} from '../cash-reconcile.js';
 const r=express.Router();r.use(authRequired);
@@ -60,12 +60,12 @@ r.get('/report',async(req,res)=>{
  const select=isOps?`SELECT o.id,o.date,o.concept,o.receipt,o.amount,o.ruc,o.status,o.bank,o.type,o.category,COALESCE(NULLIF(o.provider_name,''),p.name,'') provider,o.source_file,o.source_ref,o.import_batch,o.bank_account,o.order_number,o.usd_reference usd FROM ops o LEFT JOIN providers p ON p.company_id=o.company_id AND p.ruc=o.ruc`:`SELECT i.id,i.date,i.detail concept,i.receipt,i.amount,i.ruc,'Pagado' status,'' bank,'Caja chica' type,i.category,i.provider,c.area,c.num,i.source_ref,i.source_category,i.usd,c.source_file FROM petty_items i JOIN petty_cash c ON c.id=i.cc_id`;
  const data=(await db.execute({sql:`${select} WHERE ${conditions.join(' AND ')} ORDER BY ${alias}.date,${alias}.id LIMIT 10001`,args})).rows;if(data.length>10000)return res.status(422).json({error:'Más de 10000 registros. Reduce el periodo.'});
  let rows=data.map(x=>({id:Number(x.id),date:String(x.date),month:String(x.date).slice(0,7),year:String(x.date).slice(0,4),concept:String(x.concept||''),receipt:String(x.receipt||''),amount:Number(x.amount),ruc:String(x.ruc||''),status:String(x.status),bank:String(x.bank||'Sin dato'),type:String(x.type||'General'),category:String(x.category||'Sin clasificar'),provider:String(x.provider||x.ruc||'Sin dato'),area:isOps?'Sin dato':String(x.area||x.num||'Sin dato'),source:isOps?(x.import_batch?'Importado':'Manual'):'Caja chica',reference:[isOps?'':x.num,x.source_file,x.source_ref].filter(Boolean).join(' · '),cci:String(x.bank_account||''),order:String(x.order_number||''),usd:x.usd==null?'':Number(x.usd),source_category:String(x.source_category||''),suggestion:suggestCategory(x.concept)}));
- rows=rows.map(x=>({...x,categoryMonth:`${x.month} · ${x.category}`,categoryYear:`${x.year} · ${x.category}`}));
+ rows=rows.map(x=>({...x,family:familyFor(x.category,x.concept),familyCategory:`${familyFor(x.category,x.concept)} · ${x.category}`,categoryMonth:`${x.month} · ${x.category}`,categoryYear:`${x.year} · ${x.category}`}));
  if(f.category)rows=rows.filter(x=>x.category===f.category);if(f.search){const q=normalize(f.search);rows=rows.filter(x=>normalize([x.concept,x.provider,x.ruc,x.receipt,x.reference].join(' ')).includes(q));}
  const dimensions=Object.fromEntries(Object.entries(dims).filter(([k])=>isOps?k!=='area':!['bank','status','type','source'].includes(k)));if(!dimensions[f.group])return res.status(400).json({error:'Agrupación no disponible para este origen'});
  const allGroups=Object.fromEntries(Object.keys(dimensions).map(k=>[k,groupsFor(rows,k)]));const groups=allGroups[f.group];const total=groupsFor(rows.map(x=>({...x,total:'Total'})),'total')[0]||{count:0,amount:0,paid:0,pending:0};
  const company=(await db.execute({sql:'SELECT name FROM companies WHERE id=?',args:[cid]})).rows[0]?.name||'';const title=`${isOps?'Operaciones':'Caja chica'} por ${dimensions[f.group].toLowerCase()}`;
- const context=`${company} | ${f.from||'Inicio'} a ${f.to||'Fin'} | Estado: ${f.status||'Todos'} | Rubro: ${f.category||'Todos'} | Búsqueda: ${f.search||'Todas'} | Moneda: PEN (S/). ${isOps?'Pagado y pendiente se presentan por separado.':'Gastos de caja, sin sumar fondos asignados.'} No combina operaciones y caja chica para evitar duplicidad.`;
+ const context=`${company} | ${f.from||'Inicio'} a ${f.to||'Fin'} | Estado: ${f.status||'Todos'} | Rubro: ${f.category||'Todos'} | Búsqueda: ${f.search||'Todas'} | Moneda: PEN (S/). ${isOps?'Pagado y pendiente se presentan por separado.':'Gastos de caja, sin sumar fondos asignados.'} Familias sugeridas para rubros sin clasificar; no se cambia el rubro original. No combina operaciones y caja chica para evitar duplicidad.`;
  const p={title,context,dimension:dimensions[f.group],dimensions,group:f.group,groups,allGroups,totals:total,rows};
  if(f.format==='json')return res.json(p);
  if(rows.length>2000&&f.format==='pdf')return res.status(422).json({error:'El PDF admite hasta 2000 registros. Reduce el periodo o exporta Excel.'});

@@ -37,11 +37,45 @@ def reconcile_cash_period(meta,rows,warnings):
     else:
         meta.setdefault('from_date',start);meta.setdefault('to_date',end)
 
+def monthly_period(title):
+    t=re.sub(r'\bsetiembre\b','septiembre',norm(title))
+    if not re.search(r'\b(?:resumen|consolidado)\s+(?:(?:mensual|general)\s+(?:de\s+)?)?(?:de\s+)?operaciones\b|\b(?:resumen|consolidado)\s+mensual\b',t):return ''
+    m=re.search(r'\b('+'|'.join(MONTHS)+r')\s+(?:de\s+)?(20\d{2})\b',t)
+    return f'{m[2]}-{MONTHS.index(m[1])+1:02d}' if m else ''
+
+def detect_monthly(grid,refs,heading,name):
+    # Explicit consolidated heading prevents treating ordinary payment reports as totals.
+    month=monthly_period(heading) or monthly_period(name)
+    if not month:return None
+    for hi,head in enumerate(grid):
+        cols=header_columns(head)
+        if any(cols[k] is None for k in ('concept','date','amount')):continue
+        rows=[];declared=None;warnings=[]
+        for i,row in enumerate(grid[hi+1:],hi+1):
+            def val(k):
+                j=cols[k];return clean(row[j]) if j is not None and j<len(row) else ''
+            a=money(val('amount'));j=cols['amount']
+            if val('amount')=='S/' and j+1<len(row) and j+1 not in cols.values():a=money(row[j+1])
+            if is_summary(row):
+                declared=a;break
+            if not any(clean(v) for v in row):continue
+            rows.append(base_row(date=date_es(val('date'),month[:4]),concept=val('concept'),amount=a,reference=refs[i]))
+        if not rows:continue
+        if declared is None:warnings.append('No se reconoció el total impreso; verifica el importe.')
+        elif round(declared*100)!=total_cents(rows):warnings.append('La suma difiere del total impreso. Corrige las filas antes de guardar.')
+        if monthly_period(name) and monthly_period(heading) and monthly_period(name)!=month:warnings.append('El periodo del nombre difiere del encabezado; se usa el encabezado.')
+        if any(not r['date'].startswith(month) for r in rows):warnings.append('Hay fechas fuera del mes del resumen; revisa antes de guardar.')
+        return {'kind':'monthly','meta':{'month':month,'title':clean(heading)[:200]},'rows':rows,'declared':declared,'warnings':warnings,'sheets':[]}
+    return None
+
 def detect_pdf(path,name,_page=0,_scan=True):
     import pdfplumber
     with pdfplumber.open(path) as pdf:
         pg=pdf.pages[_page]; page_no=_page+1; text=pg.extract_text() or ''; tables=pg.find_tables(); data=[(t,t.extract()) for t in tables]
         warnings=[]; rows=[]; meta={}; declared=None; kind=''; found=False
+        for _,grid in data:
+            monthly=detect_monthly(grid,[f'Página {page_no} · fila {i+1}' for i in range(len(grid))],text,name)
+            if monthly:return monthly
         for table,grid in data:
             for hi,head in enumerate(grid):
                 h=[norm(v) for v in head]
@@ -197,6 +231,9 @@ def is_summary(row):
 
 def detect_tabular(sheet,name):
     grid=[r['cells'] for r in sheet['rows']]
+    heading=' '.join(clean(v) for row in grid[:3] for v in row)
+    monthly=detect_monthly(grid,[r['ref'] for r in sheet['rows']],heading,name)
+    if monthly:return {**monthly,'sheet':sheet['name']}
     for hi,h in enumerate(grid[:80]):
         cols=header_columns(h)
         if cols['concept'] is None or (cols['amount'] is None and cols['usd'] is None):continue

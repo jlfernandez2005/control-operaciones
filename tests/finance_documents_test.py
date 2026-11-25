@@ -22,6 +22,13 @@ class FinanceTest(unittest.TestCase):
         try:
             txt=subprocess.check_output(['pdftotext',f.name,'-']).decode();self.assertIn('SISFIA',txt);self.assertIn('42.50',txt)
         finally:os.unlink(f.name)
+    def test_export_all_34_groups(self):
+        groups=[dict(group=f'Rubro prueba {i:02}',count=1,amount=float(i),paid=float(i),pending=0) for i in range(1,35)]
+        total=sum(g['amount'] for g in groups)
+        p=dict(title='Operaciones por rubro',context='Datos ficticios',dimension='Rubro',dimensions={'category':'Rubro'},group='category',groups=groups,allGroups={'category':groups},totals=dict(count=34,amount=total,paid=total,pending=0),rows=[])
+        wb=load_workbook(io.BytesIO(worker('xlsx',p).stdout)); labels=[r[0] for r in wb['Resumen'].values];self.assertTrue(all(g['group'] in labels for g in groups))
+        with tempfile.TemporaryDirectory() as tmp:
+            f=pathlib.Path(tmp)/'report.pdf';f.write_bytes(worker('pdf',p).stdout);txt=subprocess.check_output(['pdftotext','-layout',str(f),'-']).decode();self.assertTrue(all(g['group'] in txt for g in groups))
     def test_migration_and_duplicate_sql(self):
         c=sqlite3.connect(':memory:');c.executescript((ROOT/'server/schema.sql').read_text());c.execute("INSERT INTO companies(name,code) VALUES ('Prueba','TEST')");c.execute("INSERT INTO companies(name,code) VALUES ('Otra','OTHER')");c.execute("INSERT INTO ops(company_id,date,concept,amount,ruc,receipt) VALUES(1,'2026-01-10','Limpieza',42.5,'12345678','B001')");c.execute('ALTER TABLE ops ADD COLUMN deleted_at TEXT');
         for name,definition in {'category':"TEXT NOT NULL DEFAULT 'Sin clasificar'",'provider_name':"TEXT NOT NULL DEFAULT ''",'import_batch':'TEXT','source_file':'TEXT','source_ref':'TEXT','bank_account':"TEXT NOT NULL DEFAULT ''",'order_number':"TEXT NOT NULL DEFAULT ''",'usd_reference':'REAL'}.items(): c.execute(f'ALTER TABLE ops ADD COLUMN {name} {definition}')

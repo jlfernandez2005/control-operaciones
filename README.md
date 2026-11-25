@@ -1,6 +1,6 @@
 # SISFIA · Gestión financiera institucional
 
-**Versión 3.6.4** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
+**Versión 3.6.8** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
 
 ## Actualización del servicio Docker en Render (recomendado)
 
@@ -63,3 +63,20 @@ Reconocimiento por encabezados de operaciones PDF con tablas, Excel y CSV. Las c
 
 ### 3.6.4: carga directa y corrección de caja chica
 Arrastra un archivo a la zona de carga o selecciónalo. Si la suma no coincide con el total impreso, verifica cada gasto y usa **Usar suma de gastos** o introduce el total corregido; el motivo se conserva en auditoría. El total corregido debe ser igual a la suma del detalle. El fondo es editable e independiente. Si los gastos exceden el fondo, el presupuesto mantiene su control de conciliación y no suma ese exceso automáticamente. No requiere migración.
+
+### 3.6.5: resumen mensual de operaciones
+Arrastra un PDF de resumen mensual (por ejemplo RESUMEN DE OPERACIONES - ENERO 2026) o su versión Excel/CSV. El encabezado identifica mes y año; se reconocen las columnas concepto, fecha y monto. Revisa las filas editables y pulsa Guardar resumen mensual. El sistema guarda una referencia por empresa y mes; una nueva carga del mismo mes la reemplaza tras confirmación. Presupuesto muestra el consolidado, la suma registrada y sus diferencias por día y por mes. La proyección histórica utiliza el detalle existente y el faltante del resumen como rubro pendiente de desglose; no crea gastos ni acredita pagos. La conciliación por fecha es una comparación de importes, no una confirmación bancaria.
+La migración agrega dos columnas a budget_month_refs de forma idempotente. Respalda la base antes de desplegar.
+
+### 3.6.6: directorio automático
+El directorio se deriva en cada consulta de las operaciones activas, gastos de caja y fichas manuales de la empresa. No requiere migración ni duplica gastos. Agrupa RUC/DNI por formato, conserva nombres alternativos, separa nombres sin identificación y distingue beneficiarios de proveedores consignados. Las cuentas históricas son solo referencias; nunca se utilizan para autocompletar pagos. El sistema no verifica identidad fiscal ni titularidad bancaria. Las fichas manuales existentes se conservan.
+
+### 3.6.7: panel anual y familias de gasto
+- Ancho completo con márgenes funcionales, navegación adaptable y panel con indicadores de operaciones, pagos, directorio y cajas. El selector de periodo cambia el año y el mes; el botón Mes actual usa America/Lima. Último mes con operaciones permite analizar registros históricos.
+- El gráfico anual compara operaciones con referencias mensuales sin sumarlas. El desglose de cajas vinculadas solo redistribuye el fondo; caja no vinculada, préstamos y devoluciones se presentan como movimientos por conciliar. Los totales son montos de operaciones registradas, no gastos contables devengados certificados.
+- Las familias agrupan los rubros históricos sin actualizar los registros originales. Los rubros sin clasificar pueden mostrar una familia sugerida por el concepto. Los rubros existentes personalizados desconocidos quedan en Otros / por revisar. Las reglas nuevas se aplican a importaciones y registros nuevos con rubro vacío; las sugerencias históricas pueden aplicarse desde Rubros y reportes. Presupuesto conserva las partidas originales.
+- Reportes: Familia de gasto, Familia y rubro, Rubro individual; exportación PDF/XLSX con agrupaciones. El panel usa el desglose conciliado de Presupuesto, mientras que Rubros y reportes muestra los registros de cada origen por separado.
+- No hay cambios de esquema ni de credenciales. Respaldar antes de desplegar y comprobar el panel en producción. Pruebas de navegador bloqueadas por política del entorno; las pruebas estáticas y del modelo no equivalen a una validación de producción.
+
+### 3.6.8: reportes completos
+El gráfico de Rubros y reportes muestra todos los grupos devueltos por el análisis, con contador visible. Se mantienen los filtros, las exportaciones y las protecciones de datos anteriores. No requiere migración.

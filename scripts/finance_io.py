@@ -87,7 +87,7 @@ def preview(p):
     documents=[d for sh in sheets if (d:=detect_tabular(sh,p['name']))] if not name.endswith('.pdf') else []
     print(json.dumps({'sheets':sheets,'warnings':warnings,'documents':documents},ensure_ascii=False))
 
-DETAIL=[('date','Fecha'),('concept','Concepto'),('category','Rubro'),('provider','Proveedor'),('ruc','RUC / DNI'),('receipt','Comprobante'),('status','Estado'),('bank','Banco'),('type','Tipo'),('area','Área / caja'),('source','Origen'),('reference','Documento / referencia'),('amount','Monto (S/)'),('cci','Cuenta / CCI'),('order','N° Orden'),('usd','Referencia USD'),('source_category','Categoría original')]
+DETAIL=[('date','Fecha'),('concept','Concepto'),('category','Rubro'),('provider','Proveedor'),('ruc','RUC / DNI'),('receipt','Comprobante'),('status','Estado'),('bank','Banco'),('type','Tipo'),('area','Área / caja'),('source','Origen'),('reference','Documento / referencia'),('amount','Monto (S/)'),('cci','Cuenta / CCI'),('order','N° Orden'),('usd','Referencia USD'),('source_category','Categoría original'),('family','Familia de gasto')]
 
 def xlsx(p):
     from openpyxl import Workbook
@@ -121,7 +121,7 @@ def xlsx(p):
         if key==p['group']:continue
         rows=[(g['group'],g['count'],g['amount'],g['paid'],g['pending']) for g in p['allGroups'][key]]
         table(wb.create_sheet(label.replace('/','-')[:31]),'SISFIA | '+label,[label,'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)'],rows,{3,4,5},[38,14,20,20,20])
-    table(wb.create_sheet('Detalle'),'SISFIA | Detalle',[v for _,v in DETAIL],[[r.get(k,'') for k,_ in DETAIL] for r in p['rows']],{13,16},[14,65,30,35,18,22,17,22,20,25,18,55,20,28,18,18,25])
+    table(wb.create_sheet('Detalle'),'SISFIA | Detalle',[v for _,v in DETAIL],[[r.get(k,'') for k,_ in DETAIL] for r in p['rows']],{13,16},[14,65,30,35,18,22,17,22,20,25,18,55,20,28,18,18,25,35])
     output=io.BytesIO();wb.save(output);sys.stdout.buffer.write(output.getvalue())
 
 def pdf(p):

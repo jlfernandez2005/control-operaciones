@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const {$,esc,fm,fd,ml,bank,by,ty,srt,api}=AppCore;
-const state={user:null,company:null,ops:[],prov:[],cc:[],archive:false};
+const state={user:null,company:null,ops:[],prov:[],directory:[],cc:[],archive:false};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const isAdmin=()=>state.user?.role==='admin';
 const canEdit=()=>state.user?.role!=='lector';
@@ -27,8 +27,8 @@ function setMsg(sel,txt,cls){const e=$(sel);e.textContent=txt;e.className='msg '
 })();
 
 async function loadAll(){
-  const [ops,prov,cc]=await Promise.all([api('/ops'),api('/prov'),api('/cc')]);
-  state.ops=ops;state.prov=prov;state.cc=cc;
+  const [ops,prov,cc,directory]=await Promise.all([api('/ops'),api('/prov'),api('/cc'),api('/prov/directory')]);
+  state.ops=ops;state.prov=prov;state.cc=cc;state.directory=directory;
 }
 
 $('#login-form').onsubmit=async e=>{
@@ -80,6 +80,7 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t!=='imp'&&document.querySelector('#t-imp').classList.contains('on')){if(!FinanceUI.canLeave())return;FinanceUI.resetImport();}
     document.querySelectorAll('#nav button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
     document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id==='t-'+b.dataset.t));
+    if(b.dataset.t==='dash')drawDash();
     if(b.dataset.t==='res')drawRes();
     if(b.dataset.t==='usr')drawUsr();
     if(b.dataset.t==='aud')loadAudit(true);
@@ -90,31 +91,42 @@ document.querySelectorAll('#nav button').forEach(b=>{
   };
 });
 
+let dashRequest=0;
 function drawDash(){
-  const mo=today().slice(0,7);
-  const L=state.ops.filter(o=>o.date.slice(0,7)===mo);
-  const T=total(L);
-  const pend=L.filter(o=>o.status!=='Pagado').length;
-  $('#d-k').innerHTML=[
-    ['Operaciones del mes',L.length],
-    ['Monto del mes',fm(T)],
-    ['Pendientes',pend],
-    ['Proveedores',state.prov.length],
-    ['Cajas chicas',state.cc.length]
-  ].map(x=>'<div><span>'+x[0]+'</span><b>'+x[1]+'</b></div>').join('');
-  const R=state.ops.slice().sort((a,b)=>a.date<b.date?1:-1).slice(0,8);
-  $('#d-recent').innerHTML=R.length?R.map(o=>`<tr><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="r">${fm(o.amount)}</td><td class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</td></tr>`).join(''):'<tr><td>Sin operaciones.</td></tr>';
+ const period=$('#d-period').value||today().slice(0,7);$('#d-period').value=period;
+ if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(period)){ $('#d-note').textContent='Selecciona un periodo válido.';return; }
+ const request=++dashRequest;
+ renderDash(FinanceCore.dashboardModel(period,state.ops),period);
+ $('#d-note').textContent='Consultando resúmenes y presupuesto…';
+ api('/budget?year='+period.slice(0,4)).then(b=>{if(request!==dashRequest)return;renderDash(FinanceCore.dashboardModel(period,state.ops,b),period,true);$('#d-note').textContent='Datos actualizados.';}).catch(()=>{if(request===dashRequest)$('#d-note').textContent='No se pudo consultar presupuesto. Se muestran únicamente las operaciones registradas.';});
 }
+function renderDash(d,period,complete=false){
+ const money=x=>x==null?'—':fm(x),pct=(n,v)=>v>0?Math.max(0,Math.min(100,n/v*100)):0, m=d.month, monthName=AppCore.MES[Number(period.slice(5))-1],current=period===today().slice(0,7);
+ const kpis=[['Acumulado anual · '+d.year,fm(d.annual),d.count+' operaciones registradas'],[current?'Mes en curso':'Mes seleccionado · '+monthName,fm(m.registered),m.count?m.count+' operaciones':'Sin operaciones registradas'],['Pagado · '+d.year,fm(d.paid),'Según estado registrado'],['Pendiente · '+d.year,fm(d.pending),'Por pagar'],['Resúmenes del año',money(d.reference),complete?d.referenceCount+' de 12 meses cargados':'Consultando referencias'],['Proveedores y beneficiarios',state.directory.length,'Directorio general'],['Cajas chicas',state.cc.length,'Total histórico'],['Resumen de '+monthName,money(m.reference),m.reference==null?'Sin referencia disponible':'No se suma al registrado']];
+ $('#d-k').innerHTML=kpis.map(([label,value,detail])=>`<div><span>${esc(label)}</span><b>${esc(value)}</b><small>${esc(detail)}</small></div>`).join('');
+ const max=Math.max(1,...d.months.flatMap(x=>[x.registered,x.reference||0]));
+ $('#d-months').innerHTML=d.months.map((x,i)=>`<button type="button" class="dash-month ${x.month===period?'active':''}" data-month="${x.month}" aria-label="${esc(AppCore.MES[i])}: registrado ${esc(fm(x.registered))}; resumen ${esc(money(x.reference))}" title="${esc(AppCore.MES[i])}: ${esc(fm(x.registered))} / ${esc(money(x.reference))}"><span class="dash-bars"><i class="dash-bar reg" style="height:${pct(x.registered,max)}%"></i><i class="dash-bar ref" style="height:${pct(x.reference||0,max)}%"></i></span><span>${AppCore.MES[i].slice(0,3)}</span></button>`).join('');
+ $('#d-month-table').innerHTML=d.months.map((x,i)=>`<tr><td>${AppCore.MES[i]}</td><td class="r">${fm(x.registered)}</td><td class="r">${money(x.reference)}</td><td class="r">${x.reference==null?'—':fm(x.registered-x.reference)}</td></tr>`).join('');
+ $('#d-group-note').textContent=complete?'Operaciones del año, con desglose de cajas vinculadas y familias sugeridas para rubros sin clasificar. Los resúmenes no se suman.':'Operaciones registradas; conciliación de caja pendiente de consultar.';
+ const groupMax=Math.max(1,...d.groups.map(g=>g.amount));$('#d-groups').innerHTML=d.groups.map(g=>`<div class="dash-group"><div><span>${esc(g.group)}</span><b>${fm(g.amount)}</b></div><div class="dash-track"><i class="reg" style="width:${pct(g.amount,groupMax)}%"></i></div><small>${pct(g.amount,d.annual).toFixed(1)}% del total registrado</small></div>`).join('')||'<p class="muted">No hay movimientos en este año.</p>';
+ const paidPct=pct(d.paid,d.annual),pendingPct=pct(d.pending,d.annual);$('#d-status').innerHTML=`<div class="dash-status-amount">${fm(d.annual)}<small>Total registrado</small></div><div class="dash-stacked"><i class="reg" style="width:${paidPct}%"></i><i class="ref" style="width:${pendingPct}%"></i></div><div class="dash-breakdown"><span>Pagado <b>${fm(d.paid)} · ${paidPct.toFixed(1)}%</b></span><span>Pendiente <b>${fm(d.pending)} · ${pendingPct.toFixed(1)}%</b></span></div>`;
+ $('#d-budget-info').innerHTML=`<div class="dash-breakdown"><span>Presupuesto registrado <b>${money(d.planned)}</b></span><span>Meses con presupuesto <b>${d.plannedCount} / 12</b></span><span>Saldo en meses con plan <b>${d.planned===null?'—':fm(d.planned-d.plannedRegistered)}</b></span><span>Diferencia en meses con resumen <b>${d.reference===null?'—':fm(d.referenceRegistered-d.reference)}</b></span><span>Cajas por conciliar en el año <b>${d.cashReview??'—'}</b></span></div><p class="muted">Saldo y diferencias comparan únicamente los meses que cuentan con plan o referencia, respectivamente.</p>`;
+ const R=d.latest;$('#d-recent').innerHTML=R.length?R.map(o=>`<tr><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td>${esc(o.category||'Sin clasificar')}</td><td class="r">${fm(o.amount)}</td><td class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</td></tr>`).join(''):'<tr><td>Sin operaciones en este año.</td></tr>';
+}
+$('#d-period').onchange=drawDash;$('#d-current').onclick=()=>{$('#d-period').value=today().slice(0,7);drawDash();};$('#d-last').onclick=()=>{const last=state.ops.map(o=>String(o.date)).filter(x=>/^20\d{2}-\d{2}-\d{2}$/.test(x)).sort().at(-1);if(!last){toast('No hay operaciones registradas.');return;}$('#d-period').value=last.slice(0,7);drawDash();};
+$('#d-months').onclick=e=>{const month=e.target.closest('[data-month]')?.dataset.month;if(month){$('#d-period').value=month;drawDash();}};
+$('#d-detail').onclick=()=>{const year=$('#d-period').value.slice(0,4);$('#fin-from').value=year+'-01-01';$('#fin-to').value=year+'-12-31';$('#fin-source').value='ops';$('#fin-source').dispatchEvent(new Event('change'));$('#fin-group').value='family';$('#fin-cat').value='';$('#fin-status').value='';$('#fin-search').value='';document.querySelector('#nav button[data-t=fin]').click();};
+$('#d-budget').onclick=()=>{$('#bud-year').value=$('#d-period').value.slice(0,4);document.querySelector('#nav button[data-t=budget]').click();};
 
 let EDID=null;
 function drawReg(){
   const fl=$('#r-fm')?.value;
   const q=$('#r-search').value.toLowerCase(), status=$('#r-status').value,cat=$('#r-category-filter').value;const L=(state.archive?state.deleted||[]:state.ops).filter(o=>(!fl||o.date.slice(0,7)===fl)&&(!status||o.status===status)&&(!cat||(o.category||'Sin clasificar')===cat)&&(!q||[o.concept,o.ruc,o.receipt,o.provider_name,o.category,state.prov.find(p=>p.ruc===o.ruc)?.name].join(' ').toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);$('#r-count').textContent=`${L.length} operaciones · ${fm(total(L))}`;
-  $('#dl').innerHTML=state.prov.map(p=>`<option value="${esc(p.ruc)}">${esc(p.name)}</option>`).join('');
+  $('#dl').innerHTML=state.directory.filter(p=>p.ruc&&!p.name_conflict).map(p=>`<option value="${esc(p.ruc)}">${esc(p.name)}</option>`).join('');
   const canEdit=state.user.role!=='lector';
   $('#r-tb').innerHTML=L.map(o=>{
     const p=state.prov.find(x=>x.ruc===o.ruc);
-    return`<tr><td>${o.id}</td><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="l">${esc(o.receipt||'')}${o.order_number?'<small class="im-sub">Orden '+esc(o.order_number)+'</small>':''}</td><td class="r">${fm(o.amount)}${o.usd_reference!=null?'<small class="im-sub">USD '+esc(o.usd_reference)+'</small>':''}</td><td>${esc(o.bank_account||p?.cci||'')}</td><td class="l">${esc(o.provider_name||p?.name||'Sin registrar')}</td><td>${esc(o.bank)}</td><td>${esc(o.type)}</td><td>${esc(o.category||'Sin clasificar')}</td><td><span class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</span></td><td>${o.signature?'<span class="muted">Generada</span>':''}</td><td>${state.archive?`<button class="btn g" data-act="restore" data-id="${o.id}">Restaurar</button>`:`${canEdit?`<button class="x edit" data-act="eo" data-id="${o.id}">Editar</button>`:''}${isAdmin()?`<button class="x" data-act="del" data-id="${o.id}">Archivar</button>`:''}`}</td></tr>`;
+    return`<tr><td>${o.id}</td><td>${esc(fd(o.date))}</td><td class="l">${esc(o.concept)}</td><td class="l">${esc(o.receipt||'')}${o.order_number?'<small class="im-sub">Orden '+esc(o.order_number)+'</small>':''}</td><td class="r">${fm(o.amount)}${o.usd_reference!=null?'<small class="im-sub">USD '+esc(o.usd_reference)+'</small>':''}</td><td>${esc(o.bank_account||p?.cci||'')}</td><td class="l">${esc(o.provider_name||p?.name||'Sin registrar')}</td><td>${esc(o.bank)}</td><td>${esc(o.type)}</td><td>${esc(o.category||'Sin clasificar')}<small class="im-sub">${esc(FinanceCore.familyFor(o.category,o.concept))}</small></td><td><span class="${o.status==='Pagado'?'ok':'warn'}">${esc(o.status)}</span></td><td>${o.signature?'<span class="muted">Generada</span>':''}</td><td>${state.archive?`<button class="btn g" data-act="restore" data-id="${o.id}">Restaurar</button>`:`${canEdit?`<button class="x edit" data-act="eo" data-id="${o.id}">Editar</button>`:''}${isAdmin()?`<button class="x" data-act="del" data-id="${o.id}">Archivar</button>`:''}`}</td></tr>`;
   }).join('');
 }
 window.eo=async function(id){
@@ -149,11 +161,26 @@ function drawRes(){
   $('#m-k').innerHTML=[['Total',fm(T)],['N° ops',L.length],['Promedio',fm(L.length?T/L.length:0)],['Pagado',fm(pg)],['Pendiente',fm(T-pg)]].map(x=>`<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
 }
 
+let providerPage=0;
 function drawPrv(){
-  const canEdit=state.user.role!=='lector';
-  $('#v-tb').innerHTML=state.prov.map(p=>`<tr><td>${esc(p.ruc)}</td><td class="l">${esc(p.name)}</td><td class="l">${esc(p.holder||'')}</td><td>${esc(p.cci)}</td><td>${esc(bank(p.cci))}</td><td>Registrado</td><td>${isAdmin()?`<button class="x" data-act="dp" data-id="${p.id}">Eliminar</button>`:''}</td></tr>`).join('');
+  const list=state.directory,q=$('#v-search').value.trim().toLowerCase(),src=$('#v-source').value,rev=$('#v-review').value;
+  const alert=p=>p.needs_review||p.account_conflict;
+  const filtered=list.filter(p=>(!src||p.sources.includes(src))&&(!rev||(rev==='review'?alert(p):!alert(p)))&&(!q||[p.name,p.ruc,p.document_reference,...p.aliases].join(' ').toLowerCase().includes(q)));
+  $('#v-kpis').innerHTML=[['Fichas detectadas',list.length],['Con RUC / DNI',list.filter(p=>p.ruc).length],['Por verificar',list.filter(alert).length],['Fichas manuales',list.filter(p=>p.manual_id).length]].map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+  providerPage=Math.min(providerPage,Math.max(0,Math.ceil(filtered.length/30)-1));
+  $('#v-count').textContent=`${filtered.length} coincidencias · Los recuentos de operaciones y caja se muestran por separado.`;
+  $('#v-page').textContent=filtered.length?`${providerPage*30+1}–${Math.min((providerPage+1)*30,filtered.length)} de ${filtered.length}`:'0 registros';
+  $('#v-prev').disabled=providerPage===0;$('#v-next').disabled=(providerPage+1)*30>=filtered.length;
+  $('#v-tb').innerHTML=filtered.slice(providerPage*30,providerPage*30+30).map(p=>`<tr><td>${esc(p.ruc||p.document_reference||'Sin identificar')}</td><td class="l"><strong>${esc(p.name)}</strong>${p.name_conflict?'<small class="im-sub">Variantes: '+esc(p.aliases.join(' / '))+'</small>':''}</td><td>${esc(p.kind)}<small class="im-sub">${esc(p.sources.join(' · '))}</small></td><td>${p.operations}</td><td>${p.cash_items}</td><td>${esc(fd(p.last_date)||'—')}</td><td class="l">${p.cci?'Ficha: '+esc(p.cci)+(p.holder?'<small class="im-sub">'+esc(p.holder)+'</small>':''):''}${p.accounts.length?'<details><summary>'+p.accounts.length+' referencia(s) histórica(s)</summary>'+p.accounts.map(a=>'<small class="im-sub">'+esc([a.bank,a.account,fd(a.date)].filter(Boolean).join(' · '))+'</small>').join('')+'</details>':!p.cci?'Sin datos':''}</td><td>${alert(p)?'<span class="warn">Por verificar</span>':'Sin alertas'}${p.account_conflict?'<small class="im-sub">Varias cuentas</small>':''}</td><td>${p.manual_id&&isAdmin()?`<button class="x" data-act="dp" data-id="${p.manual_id}">Eliminar ficha</button>`:''}</td></tr>`).join('')||'<tr><td colspan="9">No hay coincidencias. Los datos aparecerán al registrar o importar movimientos.</td></tr>';
 }
-window.dp=async function(id){if(!confirm('¿Eliminar proveedor?'))return;await api('/prov/'+id,{method:'DELETE'});await refresh()};
+for(const id of ['#v-search','#v-source','#v-review'])$(id).addEventListener(id==='#v-search'?'input':'change',()=>{providerPage=0;drawPrv()});
+$('#v-prev').onclick=()=>{providerPage--;drawPrv()};$('#v-next').onclick=()=>{providerPage++;drawPrv()};
+$('#v-refresh').onclick=run(async()=>{await refresh();toast('Directorio actualizado')});
+// Suggest only unambiguous names; never copy an observed bank account into a payment.
+for(const [docId,nameId] of [['#r-r','#r-provider'],['#ci-ruc','#ci-provider']])$(docId).addEventListener('change',()=>{
+ const p=state.directory.find(x=>x.ruc&&x.ruc===$(docId).value.trim()&&!x.name_conflict);if(p&&!$(nameId).value.trim())$(nameId).value=p.name;
+});
+window.dp=async function(id){if(!confirm('¿Eliminar la ficha manual? Los datos de operaciones y caja seguirán apareciendo.'))return;await api('/prov/'+id,{method:'DELETE'});await refresh()};
 $('#v-add').onclick=async function(){
   try{
     await api('/prov',{method:'POST',body:{ruc:$('#v-r').value.trim(),name:$('#v-n').value.trim(),cci:$('#v-c').value.replace(/\s/g,''),holder:$('#v-t').value.trim()}});

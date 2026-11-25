@@ -2,6 +2,7 @@ import express from 'express';
 import { db } from '../db.js';
 import { authRequired, roleRequired } from '../auth.js';
 import { audit } from '../audit.js';
+import {buildDirectory,directoryQueries} from '../provider-directory.js';
 
 import {z} from 'zod';
 import {validate,text,optionalText,doc} from '../validation.js';
@@ -12,6 +13,13 @@ r.use(authRequired);
 r.get('/', async (req, res) => {
   const result = await db.execute({ sql: 'SELECT * FROM providers WHERE company_id=? ORDER BY name', args: [req.user.cid] });
   res.json(result.rows);
+});
+
+// Read-only automatic directory, isolated by company. Existing manual API stays compatible.
+r.get('/directory', async (req,res)=>{
+  const args=[req.user.cid];
+  const [manual,ops,cash]=await Promise.all(Object.values(directoryQueries).map(sql=>db.execute({sql,args})));
+  res.json(buildDirectory(manual.rows,ops.rows,cash.rows));
 });
 
 r.post('/', roleRequired('admin', 'editor'), async (req, res) => {
