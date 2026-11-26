@@ -1,6 +1,6 @@
 # SISFIA · Gestión financiera institucional
 
-**Versión 3.6.8** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
+**Versión 3.7.0** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
 
 ## Actualización del servicio Docker en Render (recomendado)
 
@@ -80,3 +80,9 @@ El directorio se deriva en cada consulta de las operaciones activas, gastos de c
 
 ### 3.6.8: reportes completos
 El gráfico de Rubros y reportes muestra todos los grupos devueltos por el análisis, con contador visible. Se mantienen los filtros, las exportaciones y las protecciones de datos anteriores. No requiere migración.
+
+### 3.6.9: detalle y edición
+Las cinco tarjetas de Resumen mensual abren el detalle correspondiente. Los conceptos en Inicio, Registro, Resumen, Rubros y reportes y Caja chica abren un editor común; lector consulta sin editar. Se actualizan los indicadores tras guardar mediante las rutas PUT existentes. No requiere migraciones.
+
+## Conciliación mensual (3.7.0)
+Desde Inicio o Resumen pulsa Conciliación. Se conserva el total de operaciones y el resumen mensual por separado. SUNAT explícito en el detalle mensual se sugiere si no se detecta un pago ya registrado y el importe del día lo permite; confirma que no haya otro pago con fecha o descripción distinta. Registrar SUNAT solicita el estado y crea una sola operación en una transacción con auditoría. La diferencia ajustada es registrado más SUNAT sugerido menos referencia. Los faltantes y excesos por fecha no se compensan. La coincidencia de importes no prueba identidad ni pago; revisa posibles duplicados, informes incompletos y fechas. El periodo fiscal se extrae del concepto si figura. Las proyecciones incluyen SUNAT sugerido como tributos, no como gasto real, y mantienen el resto pendiente de desglose. No requiere migración de esquema.

@@ -26,5 +26,15 @@ async function api(path, opts={}){
   return data;
 }
 
-global.AppCore={MES,BK,$,esc,fm,isDate,fd,ml,bank,by,ty,srt,api};
+// Work in integer cents so every indicator agrees with its source records.
+function monthlyDetail(ops,month,metric='total',search=''){
+ const rows=ops.filter(o=>String(o.date).slice(0,7)===month&&!o.deleted_at).sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));
+ const sum=a=>a.reduce((n,o)=>n+Math.round(Number(o.amount)*100),0)/100;
+ const paid=rows.filter(o=>o.status==='Pagado'),pending=rows.filter(o=>o.status!=='Pagado');
+ const base=metric==='paid'?paid:metric==='pending'?pending:rows;
+ const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const q=norm(search).trim();
+ const visible=base.filter(o=>!q||norm([o.concept,o.provider_name,o.ruc,o.receipt,o.order_number,o.category,o.bank,o.status].join(' ')).includes(q));
+ return {total:sum(rows),count:rows.length,average:rows.length?sum(rows)/rows.length:0,paid:sum(paid),pending:sum(pending),base,visible,subtotal:sum(visible)};
+}
+global.AppCore={monthlyDetail,MES,BK,$,esc,fm,isDate,fd,ml,bank,by,ty,srt,api};
 })(window);

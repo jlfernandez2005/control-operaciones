@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+import {reconcile} from '../reconciliation.js';
 import express from 'express';
 import {z} from 'zod';
 import {db} from '../db.js';
@@ -8,8 +10,24 @@ import {isTotal} from '../finance-core.js';
 import {financeWorker} from '../finance-worker.js';
 const r=express.Router();r.use(authRequired);const editor=roleRequired('admin','editor');
 const month=z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/), amount=z.number().finite().min(0).max(999999999).refine(x=>Math.abs(x*100-Math.round(x*100))<.0001);
-async function data(cid,year){const q=await db.batch([{sql:'SELECT id,date,concept,type,category,amount,status,order_number FROM ops WHERE company_id=? AND deleted_at IS NULL',args:[cid]},{sql:'SELECT * FROM petty_cash WHERE company_id=?',args:[cid]},{sql:'SELECT i.* FROM petty_items i JOIN petty_cash c ON c.id=i.cc_id WHERE c.company_id=?',args:[cid]},{sql:'SELECT cash_id,op_id FROM budget_cash_links WHERE company_id=?',args:[cid]},{sql:'SELECT month,category,cents FROM budget_lines WHERE company_id=? AND substr(month,1,4)=?',args:[cid,year]},{sql:'SELECT month,cents,filename,details_json,declared_cents FROM budget_month_refs WHERE company_id=? AND substr(month,1,4)=?',args:[cid,year]}],'read');return buildBudget(year,...q.map(x=>x.rows));}
+async function data(cid,year){const q=await db.batch([{sql:'SELECT id,date,concept,type,category,amount,status,order_number,receipt,ruc,provider_name FROM ops WHERE company_id=? AND deleted_at IS NULL',args:[cid]},{sql:'SELECT * FROM petty_cash WHERE company_id=?',args:[cid]},{sql:'SELECT i.* FROM petty_items i JOIN petty_cash c ON c.id=i.cc_id WHERE c.company_id=?',args:[cid]},{sql:'SELECT cash_id,op_id FROM budget_cash_links WHERE company_id=?',args:[cid]},{sql:'SELECT month,category,cents FROM budget_lines WHERE company_id=? AND substr(month,1,4)=?',args:[cid,year]},{sql:'SELECT month,cents,filename,details_json,declared_cents FROM budget_month_refs WHERE company_id=? AND substr(month,1,4)=?',args:[cid,year]}],'read');return buildBudget(year,...q.map(x=>x.rows));}
 r.get('/',async(req,res)=>{const {year,format='json',month:filter}=req.query;if(typeof year!=='string'||!/^20\d{2}$/.test(year)||!['json','pdf','xlsx'].includes(format)||filter&&(!month.safeParse(filter).success||!filter.startsWith(year)))return res.status(400).json({error:'Periodo inválido'});const p=await data(req.user.cid,year);if(filter){p.months=p.months.filter(x=>x.month===filter);p.detail=p.detail.filter(x=>x.month===filter);p.familyDetail=p.familyDetail.filter(x=>x.month===filter);p.cash=p.cash.filter(x=>x.period.slice(0,7)===filter);p.referenceDays=p.referenceDays.filter(x=>x.date.startsWith(filter));}if(format==='json')return res.json(p);const result=await financeWorker('budget-'+format,p);res.attachment(`SISFIA-presupuesto-${filter||year}.${format}`).type(format==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').send(result);});
+// Explicit confirmation converts a SUNAT reference into an actual operation, atomically.
+r.post('/direct',editor,async(req,res)=>{
+ const b=validate(z.object({date,amount:money,concept:text(500),status:z.enum(['Pendiente','Pagado'])}),req,res);if(!b)return;
+ const cid=req.user.cid,tx=await db.transaction('write');
+ try{
+  const ref=(await tx.execute({sql:'SELECT * FROM budget_month_refs WHERE company_id=? AND month=?',args:[cid,b.date.slice(0,7)]})).rows[0];
+  const ops=(await tx.execute({sql:'SELECT * FROM ops WHERE company_id=? AND deleted_at IS NULL AND substr(date,1,7)=?',args:[cid,b.date.slice(0,7)]})).rows;
+  const match=ref&&reconcile(b.date.slice(0,4),ops,[ref]).referenceDays.find(x=>x.date===b.date&&x.directConcept===b.concept&&Math.round(x.directSuggested*100)===Math.round(b.amount*100));
+  if(!match){await tx.rollback();return res.status(409).json({error:'La referencia cambió o el pago ya existe. Actualiza la conciliación.'});}
+  const signature=crypto.randomUUID();
+  const q=await tx.execute({sql:`INSERT INTO ops(company_id,date,concept,amount,ruc,status,bank,type,category,provider_name,signature,created_by,source_file,source_ref) VALUES(?,?,?,?,'',?,'No especificado','Pago directo','Tributos y tasas','SUNAT',?,?,?,?)`,args:[cid,b.date,b.concept,b.amount,b.status,signature,req.user.uid,ref.filename,match.sourceRef||'Resumen mensual · '+b.date]});
+  const id=Number(q.lastInsertRowid);
+  await tx.execute({sql:"INSERT INTO audit(company_id,user_id,action,entity,entity_id,payload) VALUES(?,?,'create','op',?,?)",args:[cid,req.user.uid,id,JSON.stringify({source:'conciliación mensual',...b,fiscalPeriod:match.fiscalPeriod})]});
+  await tx.commit();return res.status(201).json({id});
+ }catch(e){try{await tx.rollback();}catch{}throw e;}finally{tx.close();}
+});
 r.put('/plan',editor,async(req,res)=>{const b=validate(z.object({lines:z.array(z.object({month,category:text(100),amount:amount.nullable()})).min(1).max(500)}),req,res);if(!b)return;const cid=req.user.cid;const statements=b.lines.map(x=>x.amount===null?{sql:'DELETE FROM budget_lines WHERE company_id=? AND month=? AND category=?',args:[cid,x.month,x.category]}:{sql:'INSERT INTO budget_lines(company_id,month,category,cents) VALUES(?,?,?,?) ON CONFLICT(company_id,month,category) DO UPDATE SET cents=excluded.cents',args:[cid,x.month,x.category,Math.round(x.amount*100)]});statements.push({sql:"INSERT INTO audit(company_id,user_id,action,entity,payload) VALUES(?,?,'update','budget',?)",args:[cid,req.user.uid,JSON.stringify({lines:b.lines.length})]});await db.batch(statements,'write');res.json({ok:true});});
 r.put('/reference',editor,async(req,res)=>{
  const schema=z.object({month,amount,filename:text(200),declared:amount.nullable().optional(),rows:z.array(z.object({date,concept:text(500).refine(s=>!isTotal(s)),amount:money,reference:text(300)})).min(1).max(3000).optional()}).superRefine((x,ctx)=>{if(x.rows&&(x.rows.some(r=>!r.date.startsWith(x.month))||x.rows.reduce((s,r)=>s+Math.round(r.amount*100),0)!==Math.round(x.amount*100)))ctx.addIssue({code:z.ZodIssueCode.custom,message:'Las fechas y la suma del detalle deben coincidir con el mes y el total.'});});

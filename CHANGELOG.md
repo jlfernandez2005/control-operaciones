@@ -1,3 +1,9 @@
+## 3.7.0 — Conciliación mensual y pagos directos SUNAT
+
+- Conciliación por fecha, faltantes y excesos separados, posibles duplicados.
+- SUNAT explícito en referencia: sugerencia y registro confirmado, sin duplicar el resumen ni caja chica.
+- Acceso a edición de operaciones y exportaciones de conciliación.
+
 ## 3.6.6
 - Directorio automático de proveedores y beneficiarios basado en operaciones y caja chica; filtros, paginación, alertas y autocompletado de nombres por identificación no ambigua. Sin migración de datos.
 
@@ -68,3 +74,7 @@
 - Contador de grupos visibles, incluidos resultados vacíos.
 - Actualización de caché PWA; sin cambios en la base de datos.
 - Pruebas de regresión de gráfico, tabla y exportaciones con 34 grupos.
+
+## 3.6.9
+- Detalle mensual navegable por indicador, búsqueda y paginación.
+- Editor común de operaciones y gastos con actualización de vistas y permisos existentes.

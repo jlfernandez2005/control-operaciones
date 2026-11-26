@@ -1,3 +1,4 @@
+import {reconcile} from './reconciliation.js';
 import {normalize,suggestCategory,familyFor} from './finance-core.js';
 const cents=x=>Math.round(Number(x||0)*100);
 const cat=x=>String(x||'Sin clasificar').trim()||'Sin clasificar';
@@ -23,8 +24,8 @@ export function buildBudget(year,ops,boxes,items,links,plans,refs){
  const detail=[...rows.values()].sort((a,b)=>a.month.localeCompare(b.month)||a.category.localeCompare(b.category)).map(r=>({...r,planned:r.planned===null?null:r.planned/100,paid:r.paid/100,pending:r.pending/100,registered:(r.paid+r.pending)/100,balance:r.planned===null?null:(r.planned-r.paid-r.pending)/100}));
  const refMap=new Map(refs.map(x=>[x.month,x]));
  const totals=months.map(month=>{const r=[...rows.values()].filter(x=>x.month===month),p=r.filter(x=>x.planned!==null),planned=p.reduce((s,x)=>s+x.planned,0),paid=r.reduce((s,x)=>s+x.paid,0),pending=r.reduce((s,x)=>s+x.pending,0),unplanned=r.filter(x=>x.planned===null).reduce((s,x)=>s+x.paid+x.pending,0),reference=refMap.get(month);return {month,planned:p.length?planned/100:null,paid:paid/100,pending:pending/100,registered:(paid+pending)/100,balance:p.length?(planned-paid-pending)/100:null,unplanned:unplanned/100,reference:reference?Number(reference.cents)/100:null,referenceFile:reference?.filename||'',difference:reference?(paid+pending-Number(reference.cents))/100:null,cashDetail:items.filter(i=>String(i.date).slice(0,7)===month).reduce((s,i)=>s+cents(i.amount),0)/100};});
- const referenceDays=[];
- for(const ref of refs){let entries;try{entries=JSON.parse(ref.details_json||'[]');}catch{entries=[];}if(!Array.isArray(entries))continue;const days=new Map();for(const e of entries){if(!String(e.date).startsWith(ref.month))continue;const d=days.get(e.date)||{date:e.date,concepts:[],referenceCents:0};d.concepts.push(e.concept);d.referenceCents+=cents(e.amount);days.set(e.date,d);}for(const d of days.values()){const registered=ops.filter(o=>o.date===d.date).reduce((s,o)=>s+cents(o.amount),0);referenceDays.push({date:d.date,concept:d.concepts.join(' / '),reference:d.referenceCents/100,registered:registered/100,difference:(registered-d.referenceCents)/100});}}
- referenceDays.sort((a,b)=>a.date.localeCompare(b.date));
+ const reconciliation=reconcile(year,ops,refs);
+ for(const m of totals){const rec=reconciliation.months.find(r=>r.month===m.month);Object.assign(m,rec||{directSuggested:0,adjustedDifference:null,missing:null,excess:null,reviewDays:null,hasDailyDetail:false});}
+ const referenceDays=reconciliation.referenceDays;
  return {year,detail,months:totals,cash:review,referenceDays,familyDetail:[...familyRows.values()].map(x=>({month:x.month,family:x.family,amount:x.cents/100}))};
 }
