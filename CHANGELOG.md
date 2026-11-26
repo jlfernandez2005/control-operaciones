@@ -1,3 +1,11 @@
+## 3.7.2
+
+- Nuevo módulo Resumen de operaciones: consulta anual, registro manual, edición de filas y eliminación por administrador, con trazabilidad y control de concurrencia.
+- Exportación individual de resúmenes en PDF y Excel con conciliación.
+- Exportaciones desde Detalle mensual y diseño institucional común para informes financieros y presupuestarios.
+- Accesos directos desde Inicio, Presupuesto y el importador.
+- Sin migraciones adicionales de tablas.
+
 ## 3.7.1
 - Registro dedicado de SUNAT desde Inicio, Resumen y Presupuesto; sugerencias desde la referencia, fecha efectiva y periodo fiscal independiente.
 - Validación de duplicados por comprobante, fecha e importe, con auditoría y actualización de los totales.

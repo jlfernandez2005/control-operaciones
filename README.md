@@ -89,3 +89,12 @@ Desde Inicio o Resumen pulsa Conciliación. Se conserva el total de operaciones 
 
 ### Registro mensual SUNAT (3.7.1)
 En Inicio, Resumen mensual o Presupuesto, pulsa **Registrar SUNAT**. Si hay una sugerencia en el resumen del mes, puedes seleccionarla. Si no, ingresa fecha efectiva, periodo tributario, importe, estado y banco/medio; el comprobante es opcional. Solo marca Pagado si corresponde. Se guarda una operación de rubro Tributos y tasas y se actualizan los totales; no se altera el resumen mensual. Si ya existe el pago, edita el registro anterior. No requiere cambios de esquema.
+
+
+### Resumen de operaciones (3.7.2)
+
+El menú **Resumen de operaciones** permite consultar los doce meses de un año y editar o eliminar los resúmenes guardados. El administrador y el editor pueden modificar las filas; únicamente el administrador puede eliminar una referencia mensual. La eliminación no afecta a operaciones, pagos SUNAT ni caja chica. El total se recalcula a partir de las filas si existe detalle. Las versiones anteriores de la referencia se conservan en auditoría. El periodo de una referencia existente permanece fijo: para corregirlo se debe registrar el mes correcto y eliminar el equivocado. Los informes anteriores se conservan en la base y no requieren reimportación.
+
+Los PDF y Excel de resúmenes, rubros y presupuesto comparten formato institucional. Los resúmenes exportados incluyen el total impreso, el registrado, las diferencias y, cuando está disponible, la conciliación diaria. La exportación del detalle mensual usa los filtros seleccionados.
+
+Pruebas adicionales: `python3 tests/reference-management_test.py`.

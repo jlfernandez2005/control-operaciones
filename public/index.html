@@ -53,7 +53,8 @@
 <nav class="tabs" id="nav">
   <button data-t="dash" aria-selected="true">Inicio</button>
   <button data-t="reg" aria-selected="false">Registro</button>
-  <button data-t="res" aria-selected="false">Resumen</button>
+  <button data-t="res" aria-selected="false">Detalle mensual</button>
+  <button data-t="refs" aria-selected="false">Resumen de operaciones</button>
   <button data-t="imp" aria-selected="false" id="tab-imp">Importar informes</button>
   <button data-t="fin" aria-selected="false">Rubros y reportes</button>
   <button data-t="budget" aria-selected="false">Presupuesto</button>
@@ -74,8 +75,10 @@
   <div class="card"><h2>Accesos rápidos</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" id="d-new">+ Nueva operación</button>
+      <button class="btn g" id="d-sunat">+ Registrar SUNAT</button>
       <button class="btn g" id="d-export-all">Exportar respaldo</button>
       <button class="btn g" id="d-import">Importar informes</button>
+      <button class="btn g" id="d-refs">Resúmenes de operaciones</button>
       <button class="btn g" id="d-finance">Rubros y reportes</button>
     </div>
   </div>
@@ -105,11 +108,19 @@
 </section>
 
 <section class="sec" id="t-res">
-  <div class="card"><h2>Resumen mensual</h2><input type="month" id="m-m" style="max-width:200px"> <button class="btn g" id="m-reconcile">Conciliar con resumen mensual</button></div>
+  <div class="card"><h2>Resumen mensual</h2><input type="month" id="m-m" style="max-width:200px"> <button class="btn g" id="m-refs">Ver resumen importado</button> <button class="btn g" id="m-reconcile">Conciliar con resumen mensual</button> <button class="btn" id="m-sunat">+ Registrar pago SUNAT</button></div>
   <p class="muted">Selecciona un indicador para consultar los movimientos que componen su importe. Solo operaciones registradas; no se suman nuevamente cajas chicas ni resúmenes importados.</p>
   <div class="k" id="m-k"></div>
-  <div class="card" id="m-detail-card"><div class="finance-heading"><h2 id="m-detail-title">Detalle mensual</h2><button class="btn g" id="m-all" type="button">Ver todas</button></div><p id="m-explain" class="muted" role="status"></p><div class="f"><div><label for="m-search">Buscar en el detalle</label><input id="m-search" placeholder="Concepto, rubro, proveedor, comprobante"></div></div><p id="m-count" class="report-note" aria-live="polite"></p><div class="sc"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor / beneficiario</th><th>Rubro</th><th>Comprobante / orden</th><th>Estado</th><th>Monto S/</th><th>Acciones</th></tr></thead><tbody id="m-rows"></tbody></table></div><div class="paging"><button class="btn g" id="m-prev" type="button">Anterior</button><span id="m-page"></span><button class="btn g" id="m-next" type="button">Siguiente</button></div></div>
+  <div class="card" id="m-detail-card"><div class="finance-heading"><h2 id="m-detail-title">Detalle mensual</h2><div class="ref-actions"><button class="btn g" id="m-pdf" type="button">PDF</button><button class="btn g" id="m-xlsx" type="button">Excel</button><button class="btn g" id="m-all" type="button">Ver todas</button></div></div><p id="m-explain" class="muted" role="status"></p><div class="f"><div><label for="m-search">Buscar en el detalle</label><input id="m-search" placeholder="Concepto, rubro, proveedor, comprobante"></div></div><p id="m-count" class="report-note" aria-live="polite"></p><div class="sc"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor / beneficiario</th><th>Rubro</th><th>Comprobante / orden</th><th>Estado</th><th>Monto S/</th><th>Acciones</th></tr></thead><tbody id="m-rows"></tbody></table></div><div class="paging"><button class="btn g" id="m-prev" type="button">Anterior</button><span id="m-page"></span><button class="btn g" id="m-next" type="button">Siguiente</button></div></div>
 </section>
+
+<section class="sec" id="t-refs">
+ <div class="hero"><div><div class="eyebrow">CONTROL DOCUMENTAL · CONSOLIDADO</div><h1>Resumen de operaciones</h1><p>Administra los informes consolidados de cada mes. No se duplican los gastos del registro.</p></div><button class="btn" id="ref-import">Importar resumen PDF / Excel</button></div>
+ <div class="card"><div class="f"><div><label for="ref-year">Año</label><input id="ref-year" type="number" min="2000" max="2099"></div><div><button class="btn g" id="ref-load">Actualizar</button></div><div><button class="btn" id="ref-new">+ Nuevo resumen manual</button></div></div><p class="msg" id="ref-msg" role="status"></p></div>
+ <div class="k" id="ref-kpis"></div>
+ <div class="card"><h2>Resúmenes mensuales</h2><p class="muted">Un resumen por mes. Eliminar un resumen retira únicamente la referencia de conciliación; no elimina operaciones, pagos SUNAT ni cajas chicas.</p><div class="sc"><table><thead><tr><th>Periodo</th><th>Documento</th><th>Total del resumen</th><th>Operaciones registradas</th><th>Diferencia (registrado − resumen)</th><th>Detalle</th><th>Acciones</th></tr></thead><tbody id="ref-list"></tbody></table></div></div>
+</section>
+<dialog id="ref-dialog" class="im-dialog record-dialog"><form id="ref-form"><div class="finance-heading"><h2 id="ref-title">Resumen mensual</h2><button type="button" class="btn g" id="ref-close">Cerrar ×</button></div><div class="f"><div><label for="ref-month">Periodo</label><input id="ref-month" type="month" required></div><div><label for="ref-name">Nombre del documento</label><input id="ref-name" required maxlength="200"></div><div><label for="ref-declared">Total impreso (opcional)</label><input id="ref-declared" type="number" min="0" step="0.01"></div><div><label for="ref-amount">Total del resumen</label><input id="ref-amount" required type="number" min="0" max="999999999" step="0.01"></div></div><p class="report-note" id="ref-explain"></p><div class="sc"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Monto S/</th><th></th></tr></thead><tbody id="ref-rows"></tbody></table></div><div class="ref-actions"><button type="button" class="btn g" id="ref-add-row">+ Agregar fila</button><button type="button" class="btn g" id="ref-pdf">PDF</button><button type="button" class="btn g" id="ref-xlsx">Excel</button><button class="btn" id="ref-save" type="submit">Guardar cambios</button></div><p class="msg" id="ref-edit-msg" role="status"></p></form></dialog>
 
 <section class="sec" id="t-prv">
   <div class="hero"><div><div class="eyebrow">DIRECTORIO AUTOMÁTICO</div><h1>Proveedores y beneficiarios</h1><p>Datos recuperados de operaciones y cajas chicas, sin volver a registrarlos.</p></div><button type="button" class="btn g" id="v-refresh">Actualizar directorio</button></div>
@@ -169,6 +180,7 @@
           <option value="provider">provider</option>
           <option value="cc">cc</option>
           <option value="cc_item">cc_item</option>
+          <option value="budget_reference">Resumen de operaciones</option>
           <option value="user">user</option>
         </select>
       </div>
@@ -210,7 +222,7 @@
  <div class="card"><h2>Resumen de los meses</h2><div class="sc"><table><thead><tr><th>Mes</th><th>Presupuesto</th><th>Pagado</th><th>Pendiente</th><th>Registrado</th><th>Saldo frente al plan</th><th>Detalle caja (no sumar)</th><th>Informe referencia</th><th>Diferencia bruta</th><th>SUNAT por confirmar</th><th>Diferencia ajustada</th></tr></thead><tbody id="bud-months"></tbody></table></div></div>
  <div class="card"><h2>Presupuesto por rubro</h2><div class="sc"><table id="bud-matrix"></table></div></div>
  <div class="card"><h2>Control de caja chica</h2><p class="muted">Coincidencia automática solo si número de orden y fondo coinciden con una operación de caja chica única. Si no coincide, selecciona la transferencia correspondiente. No se añade ningún fondo o gasto al total de operaciones. La distribución usa el mes de la transferencia; el resumen de caja muestra la fecha de cada gasto.</p><div class="sc"><table><thead><tr><th>Caja / orden</th><th>Fondo</th><th>Gastos</th><th>Estado de conciliación</th><th>Vincular operación</th></tr></thead><tbody id="bud-cash"></tbody></table></div></div>
- <div class="card" id="bud-reconcile"><div class="finance-heading"><h2>Conciliación diaria de resúmenes mensuales</h2><button class="btn g" id="bud-import">Importar informe faltante</button></div><p class="muted">SUNAT directo se identifica en el resumen, pero no se registra como pago sin confirmación. Diferencia ajustada = registrado + SUNAT por confirmar − resumen. Una coincidencia monetaria no acredita por sí sola un pago. Posibles duplicados requieren revisión.</p><div class="f"><div><label for="bud-reconcile-filter">Mostrar</label><select id="bud-reconcile-filter"><option value="all">Todas las fechas</option><option value="review">Solo por revisar</option></select></div></div><div class="sc"><table><thead><tr><th>Fecha</th><th>Concepto del resumen</th><th>Resumen S/</th><th>Registrado S/</th><th>SUNAT por confirmar</th><th>Diferencia ajustada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="bud-ref-days"></tbody></table></div><div id="bud-day-detail" class="hidden"></div></div><div class="card"><h2>Referencia mensual de control</h2><p class="muted">Carga el PDF del resumen mensual en Importar informes para guardar el detalle, o registra aquí un total manual. No crea gastos adicionales; sirve para comprobar diferencias. Se conserva una referencia consolidada por mes.</p><div class="f"><div><label for="bud-ref-month">Mes</label><input id="bud-ref-month" type="month"></div><div><label for="bud-ref-amount">Total del informe (S/)</label><input id="bud-ref-amount" type="number" min="0" step="0.01"></div><div><label for="bud-ref-name">Nombre del informe</label><input id="bud-ref-name" maxlength="200"></div><button class="btn g" id="bud-ref-save">Guardar referencia</button></div></div>
+ <div class="card" id="bud-reconcile"><div class="finance-heading"><h2>Conciliación diaria de resúmenes mensuales</h2><button class="btn g" id="bud-import">Importar informe faltante</button> <button class="btn" id="bud-sunat">+ Registrar SUNAT</button></div><p class="muted">SUNAT directo se identifica en el resumen, pero no se registra como pago sin confirmación. Diferencia ajustada = registrado + SUNAT por confirmar − resumen. Una coincidencia monetaria no acredita por sí sola un pago. Posibles duplicados requieren revisión.</p><div class="f"><div><label for="bud-reconcile-filter">Mostrar</label><select id="bud-reconcile-filter"><option value="all">Todas las fechas</option><option value="review">Solo por revisar</option></select></div></div><div class="sc"><table><thead><tr><th>Fecha</th><th>Concepto del resumen</th><th>Resumen S/</th><th>Registrado S/</th><th>SUNAT por confirmar</th><th>Diferencia ajustada</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="bud-ref-days"></tbody></table></div><div id="bud-day-detail" class="hidden"></div></div><div class="card"><div class="finance-heading"><h2>Referencia mensual de control</h2><button class="btn g" id="bud-manage-refs">Administrar resúmenes</button></div><p class="muted">Carga el PDF del resumen mensual en Importar informes para guardar el detalle, o registra aquí un total manual. No crea gastos adicionales; sirve para comprobar diferencias. Se conserva una referencia consolidada por mes.</p><div class="f"><div><label for="bud-ref-month">Mes</label><input id="bud-ref-month" type="month"></div><div><label for="bud-ref-amount">Total del informe (S/)</label><input id="bud-ref-amount" type="number" min="0" step="0.01"></div><div><label for="bud-ref-name">Nombre del informe</label><input id="bud-ref-name" maxlength="200"></div><button class="btn g" id="bud-ref-save">Guardar referencia</button></div></div>
 </section>
 
 <section class="sec" id="t-fin">
@@ -227,12 +239,14 @@
 </div>
 
 <dialog id="record-dialog" class="im-dialog record-dialog" aria-labelledby="record-title"><form id="record-form"><div class="finance-heading"><h2 id="record-title">Detalle de operación</h2><button type="button" class="btn g" id="record-close" aria-label="Cerrar detalle">Cerrar ×</button></div><p id="record-meta" class="muted"></p><div id="record-fields" class="im-edit-fields"></div><p id="record-msg" class="msg" role="status"></p><div class="paging"><button type="button" class="btn g" id="record-cancel">Cancelar</button><button type="submit" class="btn" id="record-save">Guardar cambios</button></div></form></dialog>
+<dialog id="sunat-dialog" class="im-dialog record-dialog" aria-labelledby="sunat-title"><form id="sunat-form"><div class="finance-heading"><h2 id="sunat-title">Registrar pago mensual a SUNAT</h2><button type="button" class="btn g" id="sunat-close">Cerrar ×</button></div><p class="report-note">Registra una sola operación por pago efectivo u obligación. El periodo tributario puede ser distinto del mes de la fecha de operación. No se modifica el resumen mensual importado.</p><div id="sunat-ref" class="muted" role="status"></div><div class="im-edit-fields"><div><label for="sunat-date">Fecha de operación</label><input id="sunat-date" type="date" required></div><div><label for="sunat-period">Periodo tributario</label><input id="sunat-period" type="month" required min="2000-01" max="2099-12"></div><div><label for="sunat-amount">Importe en soles</label><input id="sunat-amount" type="number" min="0.01" max="999999999" step="0.01" required></div><div><label for="sunat-status">Estado</label><select id="sunat-status"><option>Pendiente</option><option>Pagado</option></select></div><div><label for="sunat-bank">Banco / medio</label><input id="sunat-bank" list="bank-list" value="No especificado" maxlength="80" required></div><div><label for="sunat-receipt">Constancia / número de operación (opcional)</label><input id="sunat-receipt" maxlength="200"></div><div><label for="sunat-detail">Detalle del tributo (opcional)</label><input id="sunat-detail" maxlength="300" placeholder="Ej. IGV, renta, tributos varios"></div></div><p class="muted">Rubro automático: Tributos y tasas · Beneficiario: SUNAT</p><details><summary>¿Otro pago por el mismo importe?</summary><label><input type="checkbox" id="sunat-distinct"> Confirmo que es un pago diferente, con comprobante propio distinto del registrado.</label></details><div id="sunat-existing" class="muted"></div><p id="sunat-msg" class="msg" role="status"></p><div class="paging"><button type="button" class="btn g" id="sunat-cancel">Cancelar</button><button type="submit" class="btn" id="sunat-save">Guardar pago SUNAT</button></div></form></dialog>
 <div id="ts" class="toast" role="status" aria-live="polite"></div>
 
 <script src="/app-core.js"></script>
 <script src="/finance-core.js"></script>
 <script src="/finance-ui.js"></script>
 <script src="/budget-ui.js"></script>
+<script src="/reference-ui.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

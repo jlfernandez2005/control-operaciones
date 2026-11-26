@@ -69,9 +69,9 @@ function enterApp(){
     $('#tab-aud').style.display='';
   }
   $('#company-name').textContent=state.company.name;$('#today-label').textContent=new Intl.DateTimeFormat('es-PE',{dateStyle:'long',timeZone:'America/Lima'}).format(new Date());$('#r-f').value=today();$('#ci-date').value=today();$('#m-m').value=today().slice(0,7);
-  ['#op-form','#prov-form','#d-new','#c-new'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
+  ['#op-form','#prov-form','#d-new','#c-new','#d-sunat','#m-sunat','#bud-sunat'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
   drawDash();drawReg();drawRes();drawPrv();drawCC();
-  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);
+  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);ReferenceUI.init(state.user.role,refresh);
 }
 
 document.querySelectorAll('#nav button').forEach(b=>{
@@ -87,6 +87,7 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t==='imp')FinanceUI.openImport();
     if(b.dataset.t==='fin')FinanceUI.openReports();
     if(b.dataset.t==='budget')BudgetUI.open();
+    if(b.dataset.t==='refs')ReferenceUI.open();
     window.scrollTo({top:0,behavior:'instant'});
   };
 });
@@ -117,6 +118,18 @@ $('#d-period').onchange=drawDash;$('#d-current').onclick=()=>{$('#d-period').val
 $('#d-months').onclick=e=>{const month=e.target.closest('[data-month]')?.dataset.month;if(month){$('#d-period').value=month;drawDash();}};
 $('#d-detail').onclick=()=>{const year=$('#d-period').value.slice(0,4);$('#fin-from').value=year+'-01-01';$('#fin-to').value=year+'-12-31';$('#fin-source').value='ops';$('#fin-source').dispatchEvent(new Event('change'));$('#fin-group').value='family';$('#fin-cat').value='';$('#fin-status').value='';$('#fin-search').value='';document.querySelector('#nav button[data-t=fin]').click();};
 function goReconcile(month){if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month))return;$('#bud-year').value=month.slice(0,4);BudgetUI.focus(month);document.querySelector('#nav button[data-t=budget]').click();}
+// SUNAT payments are ordinary ledger records with a dedicated, minimal form.
+const sunatDialog=$('#sunat-dialog');let sunatRequest=0;
+const isSunatRecord=o=>/\bsunat\b/i.test(String(o.concept||'')+' '+String(o.provider_name||''));
+function showSunatExisting(period){const rows=state.ops.filter(o=>isSunatRecord(o)&&String(o.date).startsWith(period+'-'));$('#sunat-existing').innerHTML=rows.length?`<p><strong>Pagos SUNAT ya registrados en ${esc(period)}: ${fm(total(rows))}</strong></p>`+rows.map(o=>`<div class="sunat-existing-row"><span>${esc(fd(o.date))} · ${esc(o.concept)} · ${fm(o.amount)} · ${esc(o.status)}</span><button type="button" class="btn g" data-sunat-existing="${Number(o.id)}">Editar</button></div>`).join(''):'<p>No hay pagos SUNAT registrados para este mes.</p>';}
+function applySunatSuggestion(r){$('#sunat-date').value=r.date;$('#sunat-amount').value=r.directSuggested;$('#sunat-period').value=/^20\d{2}-(0[1-9]|1[0-2])$/.test(r.fiscalPeriod)?r.fiscalPeriod:'';$('#sunat-ref').textContent='Detectado en el resumen: '+r.directConcept+' · '+fm(r.directSuggested)+'. Verifica la fecha y el importe.';showSunatExisting(r.date.slice(0,7));}
+async function openSunat(period,suggestion=null){if(!canEdit())return;if($('#t-budget').classList.contains('on')&&!BudgetUI.canLeave())return;const m=/^20\d{2}-(0[1-9]|1[0-2])$/.test(period)?period:today().slice(0,7);const request=++sunatRequest;$('#sunat-form').reset();$('#sunat-date').value=m===today().slice(0,7)?today():'';$('#sunat-period').value='';$('#sunat-msg').textContent='';$('#sunat-ref').textContent='Mes de consulta: '+m+'. Completa los datos del pago.';showSunatExisting(m);sunatDialog.showModal();if(suggestion){applySunatSuggestion(suggestion);return;}try{const b=await api('/budget?year='+m.slice(0,4));if(request!==sunatRequest||!sunatDialog.open)return;const candidates=b.referenceDays.filter(r=>r.date.startsWith(m+'-')&&r.directSuggested>0);if(candidates.length){const el=$('#sunat-ref');el.textContent='Pagos SUNAT identificados en el resumen. Selecciona uno para completar los datos:';for(const r of candidates){const btn=document.createElement('button');btn.type='button';btn.className='btn g';btn.textContent=fd(r.date)+' · '+fm(r.directSuggested);btn.onclick=()=>applySunatSuggestion(r);el.append(' ',btn);}}}catch{if(request===sunatRequest&&sunatDialog.open)$('#sunat-ref').textContent='No se pudo consultar la referencia; puedes registrar los datos manualmente.';}}
+window.openSunatPayment=openSunat;
+$('#d-sunat').onclick=()=>openSunat($('#d-period').value);$('#m-sunat').onclick=()=>openSunat($('#m-m').value);$('#bud-sunat').onclick=()=>openSunat($('#bud-month').value||$('#bud-year').value+'-01');
+$('#sunat-date').onchange=()=>{if($('#sunat-date').value)showSunatExisting($('#sunat-date').value.slice(0,7));};
+$('#sunat-existing').onclick=e=>{const b=e.target.closest('[data-sunat-existing]');if(b){sunatDialog.close();openRecord('ops',Number(b.dataset.sunatExisting));}};
+$('#sunat-close').onclick=$('#sunat-cancel').onclick=()=>sunatDialog.close();
+$('#sunat-form').onsubmit=async e=>{e.preventDefault();if(!canEdit()||$('#sunat-save').disabled)return;const b=$('#sunat-save');b.disabled=true;setMsg('#sunat-msg','','');try{const body={date:$('#sunat-date').value,fiscalPeriod:$('#sunat-period').value,amount:Number($('#sunat-amount').value),status:$('#sunat-status').value,bank:$('#sunat-bank').value,receipt:$('#sunat-receipt').value,detail:$('#sunat-detail').value,distinctConfirmed:$('#sunat-distinct').checked};await api('/budget/direct/manual',{method:'POST',body});sunatDialog.close();try{await refresh();if($('#t-budget').classList.contains('on'))await BudgetUI.open();toast('Pago SUNAT registrado. Totales actualizados.');}catch{toast('Pago guardado. Actualiza la página para consultar los totales.');}}catch(err){setMsg('#sunat-msg',err.message,'bad');if(err.data?.existingId){const btn=document.createElement('button');btn.type='button';btn.className='btn g';btn.textContent='Revisar operación existente';btn.onclick=()=>{sunatDialog.close();openRecord('ops',Number(err.data.existingId));};$('#sunat-msg').append(' ',btn);}}finally{b.disabled=false;}};
 $('#d-reconcile').onclick=()=>goReconcile($('#d-period').value);$('#m-reconcile').onclick=()=>goReconcile($('#m-m').value);
 $('#d-budget').onclick=()=>{$('#bud-year').value=$('#d-period').value.slice(0,4);document.querySelector('#nav button[data-t=budget]').click();};
 
@@ -263,7 +276,7 @@ async function loadAudit(reset){
   try{
     const data=await api('/audit?'+qs.toString());
     aTotal=data.total;
-    $('#a-tb').innerHTML=data.rows.map(r=>`<tr><td>${r.id}</td><td>${esc(r.created_at)}</td><td>${esc(r.user_name||r.username||'—')}</td><td><span style="font-size:11px;padding:2px 8px;border-radius:999px;background:var(--hd);color:var(--pri);font-weight:700">${esc(r.action)}</span></td><td>${esc(r.entity)}</td><td>${r.entity_id??''}</td><td style="font-size:11px">${esc(r.ip||'')}</td><td class="l" style="font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((r.payload||'').slice(0,80))}</td></tr>`).join('')||'<tr><td colspan="8" style="color:var(--mut)">Sin registros.</td></tr>';
+    $('#a-tb').innerHTML=data.rows.map(r=>`<tr><td>${r.id}</td><td>${esc(r.created_at)}</td><td>${esc(r.user_name||r.username||'—')}</td><td><span style="font-size:11px;padding:2px 8px;border-radius:999px;background:var(--hd);color:var(--pri);font-weight:700">${esc(r.action)}</span></td><td>${esc(r.entity)}</td><td>${r.entity_id??''}</td><td style="font-size:11px">${esc(r.ip||'')}</td><td class="l" style="font-size:11px;max-width:380px;white-space:normal">${r.payload?`<details class="audit-payload"><summary>Ver cambios</summary><pre>${esc(r.payload)}</pre></details>`: '—'}</td></tr>`).join('')||'<tr><td colspan="8" style="color:var(--mut)">Sin registros.</td></tr>';
     $('#a-page').textContent=`Mostrando ${aTotal?aOffset+1:0}–${Math.min(aOffset+aLimit,aTotal)} de ${aTotal}`;
     $('#a-prev').disabled=aOffset===0;
     $('#a-next').disabled=aOffset+aLimit>=aTotal;
@@ -297,3 +310,9 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
 })();
+$('#d-refs').onclick=()=>{ReferenceUI.year($('#d-period').value.slice(0,4));document.querySelector('#nav button[data-t=refs]').click();};
+$('#m-refs').onclick=()=>{ReferenceUI.year($('#m-m').value.slice(0,4));document.querySelector('#nav button[data-t=refs]').click();};
+
+$('#bud-manage-refs').onclick=()=>{ReferenceUI.year($('#bud-year').value);document.querySelector('#nav button[data-t=refs]').click();};
+async function exportMonth(format){const mo=$('#m-m').value;if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(mo))throw Error('Selecciona un mes válido.');const end=new Date(Date.UTC(Number(mo.slice(0,4)),Number(mo.slice(5)),0)).getUTCDate();const q=new URLSearchParams({source:'ops',group:'category',from:mo+'-01',to:mo+'-'+end,format,search:$('#m-search').value});if(monthMetric==='paid'||monthMetric==='pending')q.set('status',monthMetric==='paid'?'Pagado':'Pendiente');const r=await fetch('/api/finance/report?'+q);if(!r.ok)throw Error((await r.json()).error||'No se pudo exportar');const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download=`SISFIA-detalle-${mo}-${monthMetric}.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+$('#m-pdf').onclick=run(()=>exportMonth('pdf'));$('#m-xlsx').onclick=run(()=>exportMonth('xlsx'));
