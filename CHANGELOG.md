@@ -1,3 +1,20 @@
+## 5.0.0 — candidata a validación
+
+- Gestión administrativa: compras, obligaciones, activos, centros de costos, documentos cifrados.
+- Cierre/reapertura mensual con triggers de protección y auditoría.
+- Vínculos bancarios individuales y transferencias, sin duplicar movimientos.
+- Permisos de ERP y Tesorería y política opcional de MFA obligatorio.
+- Simulador laboral parametrizado y ficha individual confidencial PDF.
+- Respaldo compatible con 4.2.2, incluye las tablas nuevas.
+- Validación de API/Render/Turso y auditoría de dependencias pendientes.
+
+# 4.2.2
+- Cifrado aplicativo de nuevos documentos de tesorería, seudónimo de cuenta y lectura de legado.
+- Migración controlada, rotación de clave de almacenamiento y validación de claves al iniciar.
+- Respaldo lógico completo cifrado, restauración de prueba local y script de programación externa.
+- Respaldo web sin texto claro, MFA reciente y auditoría de consultas de tesorería.
+- Pruebas locales; verificación de servidor y dependencias pendiente.
+
 ## 4.1.1
 - Conciliación reversible de fechas dentro del mismo mes, con sugerencias de coincidencias y selección manual.
 - Evidencia bancaria por cuenta y fecha; conservación de fechas originales y control de vínculos obsoletos.
@@ -105,3 +122,16 @@
 
 ## 4.0.0
 - Flujo de caja institucional La Salle, 20 partidas, proyección histórica, ingresos y movimientos adicionales, clasificación, conciliación y exportación al formato adjunto.
+
+## 4.2.0
+- Identidad visual institucional Colegio Hermano Noé Zevallos / SISFIA.
+- Planillas y personal, importación selectiva XLS/XLSX/CSV, registros auxiliares, historial cifrado, consultas y exportaciones.
+- Conciliación de depósitos y propuesta para borrador de presupuesto, sin generar operaciones duplicadas.
+- MFA TOTP, sesiones revocables, bloqueo por intentos, permisos independientes y respaldo cifrado.
+- Migración aditiva; ver `docs/PLANILLAS-4.2.md` y `docs/AUDITORIA-SEGURIDAD-4.2.md` para instalación y limitaciones.
+
+## 4.2.1
+- Validación de saldos contables diferenciada de conceptos de pago de saldos.
+- Sugerencias mejoradas para devoluciones, almuerzos, agua y liquidaciones laborales.
+- Mensajes específicos de bloqueo de importación y nueva versión de caché.
+- Sin cambios de esquema ni de registros históricos.
