@@ -127,3 +127,12 @@ CREATE TABLE IF NOT EXISTS flow_classification (
 CREATE TABLE IF NOT EXISTS flow_years (
  company_id INTEGER NOT NULL REFERENCES companies(id), year TEXT NOT NULL, config_json TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(company_id,year)
 );
+
+CREATE TABLE IF NOT EXISTS treasury_documents (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL REFERENCES companies(id), kind TEXT NOT NULL CHECK(kind IN ('bank','collection','income_summary')), month TEXT NOT NULL, account TEXT NOT NULL DEFAULT '', bank TEXT NOT NULL DEFAULT '', filename TEXT NOT NULL, digest TEXT NOT NULL, content_json TEXT NOT NULL, published INTEGER NOT NULL DEFAULT 0, revision INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(company_id,kind,month,account)
+);
+
+CREATE TABLE IF NOT EXISTS budget_date_links (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL REFERENCES companies(id), source_date TEXT NOT NULL, target_date TEXT NOT NULL, cents INTEGER NOT NULL CHECK(cents>0), payload TEXT NOT NULL, reason TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_date_links_company ON budget_date_links(company_id,target_date);

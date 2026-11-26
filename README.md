@@ -1,3 +1,7 @@
+# SISFIA 4.1.1 — Tesorería y cobranza
+
+Nuevo módulo **Bancos e ingresos**: [guía de uso y actualización](docs/TESORERIA-4.1.md). Se mantienen los módulos de 4.0.0 y anteriores.
+
 # SISFIA · Gestión financiera institucional
 
 **Versión 3.7.0** — actualización de SISFIA 3.4 para La Salle Lima. Mantiene Express, Node 22, Turso/libSQL, las cuentas existentes y los módulos anteriores.
@@ -101,3 +105,6 @@ Pruebas adicionales: `python3 tests/reference-management_test.py`.
 
 ### Flujo de caja institucional 4.0
 Ver [guía de flujo de caja](docs/FLUJO-CAJA-4.0.md).
+
+## Conciliación entre fechas
+Consulta [la guía de la versión 4.1.1](docs/CONCILIACION-FECHAS-4.1.1.md).

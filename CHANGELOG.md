@@ -1,3 +1,15 @@
+## 4.1.1
+- Conciliación reversible de fechas dentro del mismo mes, con sugerencias de coincidencias y selección manual.
+- Evidencia bancaria por cuenta y fecha; conservación de fechas originales y control de vínculos obsoletos.
+- Vínculos incluidos en presupuesto, flujo, comparación bancaria, exportaciones y respaldo.
+
+## 4.1.0
+
+- Archivo de estados bancarios y cobranza por cuenta/mes; importación automática de los cuatro formatos PDF.
+- Consulta unificada por fuentes independientes, conciliación diaria/mensual, categorías y reportes PDF/XLSX.
+- Incorporación reversible de Sallenet al flujo de caja y protección contra duplicados.
+- Acceso restringido, auditoría y respaldo; migración aditiva.
+
 ## 3.7.2
 
 - Nuevo módulo Resumen de operaciones: consulta anual, registro manual, edición de filas y eliminación por administrador, con trazabilidad y control de concurrencia.
