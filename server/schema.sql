@@ -116,3 +116,14 @@ CREATE TABLE IF NOT EXISTS budget_month_refs (
  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
  PRIMARY KEY(company_id,month)
 );
+
+CREATE TABLE IF NOT EXISTS flow_entries (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL REFERENCES companies(id), date TEXT NOT NULL, part TEXT NOT NULL, concept TEXT NOT NULL, cents INTEGER NOT NULL CHECK(cents>0), status TEXT NOT NULL, receipt TEXT NOT NULL DEFAULT '', bank TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_flow_entries_period ON flow_entries(company_id,date);
+CREATE TABLE IF NOT EXISTS flow_classification (
+ company_id INTEGER NOT NULL REFERENCES companies(id), source_key TEXT NOT NULL, part TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', PRIMARY KEY(company_id,source_key)
+);
+CREATE TABLE IF NOT EXISTS flow_years (
+ company_id INTEGER NOT NULL REFERENCES companies(id), year TEXT NOT NULL, config_json TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(company_id,year)
+);

@@ -90,3 +90,6 @@
 ## 3.6.9
 - Detalle mensual navegable por indicador, búsqueda y paginación.
 - Editor común de operaciones y gastos con actualización de vistas y permisos existentes.
+
+## 4.0.0
+- Flujo de caja institucional La Salle, 20 partidas, proyección histórica, ingresos y movimientos adicionales, clasificación, conciliación y exportación al formato adjunto.

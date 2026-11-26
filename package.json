@@ -1,7 +1,7 @@
 {
   "name": "sisfia",
-  "version": "3.7.2",
-  "description": "SISFIA · Sistema Financiero Administrativo",
+  "version": "4.0.0",
+  "description": "SISFIA \u00b7 Sistema Financiero Administrativo",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
@@ -20,7 +20,8 @@
     "test:documents": "python3 tests/finance_documents_test.py",
     "test:smart": "python3 tests/smart_import_test.py",
     "test:adaptive": "python3 tests/adaptive_import_test.py",
-    "test:annex": "python3 tests/annex_import_test.py"
+    "test:annex": "python3 tests/annex_import_test.py",
+    "test:flow": "node --test tests/flow.test.cjs"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

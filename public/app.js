@@ -71,11 +71,12 @@ function enterApp(){
   $('#company-name').textContent=state.company.name;$('#today-label').textContent=new Intl.DateTimeFormat('es-PE',{dateStyle:'long',timeZone:'America/Lima'}).format(new Date());$('#r-f').value=today();$('#ci-date').value=today();$('#m-m').value=today().slice(0,7);
   ['#op-form','#prov-form','#d-new','#c-new','#d-sunat','#m-sunat','#bud-sunat'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
   drawDash();drawReg();drawRes();drawPrv();drawCC();
-  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);ReferenceUI.init(state.user.role,refresh);
+  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);ReferenceUI.init(state.user.role,refresh);FlowUI.init(state.user.role,refresh,openRecord);
 }
 
 document.querySelectorAll('#nav button').forEach(b=>{
   b.onclick=()=>{
+    if(b.dataset.t!=='flow'&&document.querySelector('#t-flow').classList.contains('on')&&!FlowUI.canLeave())return;
     if(b.dataset.t!=='budget'&&document.querySelector('#t-budget').classList.contains('on')&&!BudgetUI.canLeave())return;
     if(b.dataset.t!=='imp'&&document.querySelector('#t-imp').classList.contains('on')){if(!FinanceUI.canLeave())return;FinanceUI.resetImport();}
     document.querySelectorAll('#nav button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
@@ -88,6 +89,7 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t==='fin')FinanceUI.openReports();
     if(b.dataset.t==='budget')BudgetUI.open();
     if(b.dataset.t==='refs')ReferenceUI.open();
+    if(b.dataset.t==='flow')FlowUI.open();
     window.scrollTo({top:0,behavior:'instant'});
   };
 });
@@ -206,7 +208,7 @@ $('#record-close').onclick=closeRecord;$('#record-cancel').onclick=closeRecord;r
 $('#record-form').onsubmit=async e=>{e.preventDefault();if(recordBusy||!recordEdit||!canEdit())return;const current=recordEdit,raw=Object.fromEntries(new FormData(e.target)),cash=current.source==='cash';let body={date:raw.date,amount:Number(raw.amount),category:raw.category.trim(),ruc:raw.ruc.trim(),receipt:raw.receipt.trim()};
  if(cash)Object.assign(body,{detail:raw.concept.trim(),provider:raw.provider.trim(),usd:raw.usd?Number(raw.usd):null});else Object.assign(body,{concept:raw.concept.trim(),provider_name:raw.provider.trim(),status:raw.status,bank:raw.bank.trim(),type:raw.type.trim(),bank_account:raw.bank_account.trim(),order_number:raw.order_number.trim()});
  recordBusy=true;$('#record-save').disabled=true;setMsg('#record-msg','Guardando…','');let saved=false;
- try{await api(cash?`/cc/${current.boxId}/items/${current.id}`:`/ops/${current.id}`,{method:'PUT',body});saved=true;recordDialog.close();await refresh();if($('#t-fin').classList.contains('on'))await FinanceUI.openReports();if($('#t-budget').classList.contains('on'))await BudgetUI.open();toast('Cambios guardados');}catch(err){if(saved)toast('Cambios guardados. No se pudo actualizar la vista; recarga la página.');else setMsg('#record-msg',err.message,'bad');}finally{recordBusy=false;$('#record-save').disabled=false;}
+ try{await api(cash?`/cc/${current.boxId}/items/${current.id}`:`/ops/${current.id}`,{method:'PUT',body});saved=true;recordDialog.close();await refresh();if($('#t-flow').classList.contains('on'))await FlowUI.open();if($('#t-fin').classList.contains('on'))await FinanceUI.openReports();if($('#t-budget').classList.contains('on'))await BudgetUI.open();toast('Cambios guardados');}catch(err){if(saved)toast('Cambios guardados. No se pudo actualizar la vista; recarga la página.');else setMsg('#record-msg',err.message,'bad');}finally{recordBusy=false;$('#record-save').disabled=false;}
 };
 document.addEventListener('click',e=>{const b=e.target.closest('[data-record]');if(b)openRecord(b.dataset.record,Number(b.dataset.id));});
 
@@ -316,3 +318,5 @@ $('#m-refs').onclick=()=>{ReferenceUI.year($('#m-m').value.slice(0,4));document.
 $('#bud-manage-refs').onclick=()=>{ReferenceUI.year($('#bud-year').value);document.querySelector('#nav button[data-t=refs]').click();};
 async function exportMonth(format){const mo=$('#m-m').value;if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(mo))throw Error('Selecciona un mes válido.');const end=new Date(Date.UTC(Number(mo.slice(0,4)),Number(mo.slice(5)),0)).getUTCDate();const q=new URLSearchParams({source:'ops',group:'category',from:mo+'-01',to:mo+'-'+end,format,search:$('#m-search').value});if(monthMetric==='paid'||monthMetric==='pending')q.set('status',monthMetric==='paid'?'Pagado':'Pendiente');const r=await fetch('/api/finance/report?'+q);if(!r.ok)throw Error((await r.json()).error||'No se pudo exportar');const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download=`SISFIA-detalle-${mo}-${monthMetric}.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
 $('#m-pdf').onclick=run(()=>exportMonth('pdf'));$('#m-xlsx').onclick=run(()=>exportMonth('xlsx'));
+
+$('#d-flow').onclick=()=>document.querySelector('#nav button[data-t=flow]').click();

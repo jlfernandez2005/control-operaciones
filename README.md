@@ -98,3 +98,6 @@ El menú **Resumen de operaciones** permite consultar los doce meses de un año 
 Los PDF y Excel de resúmenes, rubros y presupuesto comparten formato institucional. Los resúmenes exportados incluyen el total impreso, el registrado, las diferencias y, cuando está disponible, la conciliación diaria. La exportación del detalle mensual usa los filtros seleccionados.
 
 Pruebas adicionales: `python3 tests/reference-management_test.py`.
+
+### Flujo de caja institucional 4.0
+Ver [guía de flujo de caja](docs/FLUJO-CAJA-4.0.md).

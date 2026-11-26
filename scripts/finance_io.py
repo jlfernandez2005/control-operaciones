@@ -160,6 +160,7 @@ if __name__=='__main__':
         mode=sys.argv[1];p=json.load(sys.stdin)
         from budget_export import budget_xlsx,budget_pdf
         from reference_export import reference_pdf,reference_xlsx
-        {'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf,'reference-pdf':reference_pdf,'reference-xlsx':reference_xlsx}[mode](p)
+        from flow_export import flow_pdf,flow_xlsx
+        {'flow-pdf':flow_pdf,'flow-xlsx':flow_xlsx,'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf,'reference-pdf':reference_pdf,'reference-xlsx':reference_xlsx}[mode](p)
     except (ValueError,KeyError) as e: print(str(e),file=sys.stderr);sys.exit(2)
     except Exception as e: print('No se pudo leer o generar el documento ('+type(e).__name__+'). Verifica el formato y sus límites.',file=sys.stderr);sys.exit(2)
