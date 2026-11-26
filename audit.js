@@ -6,6 +6,6 @@ export async function audit({ companyId, userId, action, entity, entityId, paylo
       args: [companyId, userId || null, action, entity, entityId || null, payload ? JSON.stringify(payload) : null, req?.ip || null, req?.headers?.['user-agent'] || null]
     });
   } catch (e) { 
-    console.error('[audit] error', e.message); 
+    console.error('[audit] error', e.name||'Error'); 
   }
 }

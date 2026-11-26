@@ -111,18 +111,20 @@ def xlsx(p):
         ws.freeze_panes='A4';ws.auto_filter.ref=f'A3:{get_column_letter(len(headers))}{max(3,ws.max_row)}'
         for c,w in enumerate(widths,1):ws.column_dimensions[get_column_letter(c)].width=w
         ws.sheet_view.showGridLines=False
-    summary=[(g['group'],g['count'],g['amount'],g['paid'],g['pending']) for g in p['groups']]
-    table(ws,'SISFIA | '+p['title'],[p['dimension'],'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)'],summary,{3,4,5},[38,14,20,20,20])
+    summary=[(g['group'],g['count'],g['amount'],g['paid'],g['pending'],g['amount']/p['totals']['amount'] if p['totals']['amount'] else 0) for g in p['groups']]
+    table(ws,'SISFIA | '+p['title'],[p['dimension'],'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)','Participación'],summary,{3,4,5},[38,14,20,20,20,18])
+    for row in ws.iter_rows(min_row=4,min_col=6,max_col=6):row[0].number_format='0.0%'
     t=p['totals'];r=ws.max_row+2
-    for c,v in enumerate(['TOTAL',t['count'],t['amount'],t['paid'],t['pending']],1):
+    for c,v in enumerate(['TOTAL',t['count'],t['amount'],t['paid'],t['pending'],1 if t['amount'] else 0],1):
         x=value(ws,r,c,v);x.font=Font(bold=True,color=navy)
-        if c>=3:x.number_format='#,##0.00'
+        if c>=3:x.number_format='0.0%' if c==6 else '#,##0.00'
     for key,label in p['dimensions'].items():
         if key==p['group']:continue
         rows=[(g['group'],g['count'],g['amount'],g['paid'],g['pending']) for g in p['allGroups'][key]]
         table(wb.create_sheet(label.replace('/','-')[:31]),'SISFIA | '+label,[label,'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)'],rows,{3,4,5},[38,14,20,20,20])
     table(wb.create_sheet('Detalle'),'SISFIA | Detalle',[v for _,v in DETAIL],[[r.get(k,'') for k,_ in DETAIL] for r in p['rows']],{13,16},[14,65,30,35,18,22,17,22,20,25,18,55,20,28,18,18,25,35])
-    output=io.BytesIO();wb.save(output);sys.stdout.buffer.write(output.getvalue())
+    from report_style import polish_workbook
+    polish_workbook(wb);output=io.BytesIO();wb.save(output);sys.stdout.buffer.write(output.getvalue())
 
 def pdf(p):
     from reportlab.lib import colors
@@ -139,7 +141,8 @@ def pdf(p):
         t=LongTable(rows,colWidths=widths,repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),teal),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTNAME',(0,1),(-1,-1),'Helvetica'),('FONTSIZE',(0,0),(-1,-1),8),('VALIGN',(0,0),(-1,-1),'TOP'),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#EDF5F5')]),('BOTTOMPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),6),('ALIGN',(-1,1),(-1,-1),'RIGHT') ]));return t
     story=[Paragraph('SISFIA | '+escape(p['title']),h),Spacer(1,8),para(p['context']),Spacer(1,10)]
     t=p['totals'];story.append(Paragraph(f"Total S/ {money(t['amount'])} &nbsp; | &nbsp; {t['count']} registros &nbsp; | &nbsp; Pagado S/ {money(t['paid'])} &nbsp; | &nbsp; Pendiente S/ {money(t['pending'])}",styles['Heading3']));story.append(Spacer(1,6))
-    story.append(grid([[p['dimension'],'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)']]+[[para(g['group']),str(g['count']),money(g['amount']),money(g['paid']),money(g['pending'])] for g in p['groups']],[300,70,110,110,110]));story.append(Spacer(1,16));story.append(Paragraph('Detalle de registros',styles['Heading2']))
+    from report_style import report_table
+    story.append(report_table([p['dimension'],'Registros','Total (S/)','Pagado (S/)','Pendiente (S/)','Participación'],[[g['group'],str(g['count']),money(g['amount']),money(g['paid']),money(g['pending']),f"{(g['amount']/t['amount'] if t['amount'] else 0):.1%}"] for g in p['groups']]+[['TOTAL',str(t['count']),money(t['amount']),money(t['paid']),money(t['pending']),'100.0%' if t['amount'] else '0.0%']],[265,60,110,110,110,105],{1,2,3,4,5}));story.append(Spacer(1,16));story.append(Paragraph('Detalle de registros',styles['Heading2']))
     if not p['rows']:story.append(para('Sin registros para los filtros seleccionados.'))
     else:
         # Wrap all text instead of truncating references or monetary values.
@@ -149,12 +152,18 @@ def pdf(p):
         story.append(grid(rows,[67,250,123,130,85,75]))
     def footer(c,d):
         c.setStrokeColor(teal);c.line(35,31,landscape(A4)[0]-35,31);c.setFont('Helvetica',8);c.setFillColor(navy);c.drawString(35,18,'SISFIA · Gestión financiera institucional');c.drawRightString(landscape(A4)[0]-35,18,f'Página {d.page}')
-    SimpleDocTemplate(buf,pagesize=landscape(A4),leftMargin=35,rightMargin=35,topMargin=28,bottomMargin=42,title='SISFIA | '+p['title']).build(story,onFirstPage=footer,onLaterPages=footer);sys.stdout.buffer.write(buf.getvalue())
+    from report_style import page_frame
+    SimpleDocTemplate(buf,pagesize=landscape(A4),leftMargin=35,rightMargin=35,topMargin=80,bottomMargin=42,title='SISFIA | '+p['title']).build(story,onFirstPage=page_frame,onLaterPages=page_frame);sys.stdout.buffer.write(buf.getvalue())
 
 if __name__=='__main__':
     try:
         mode=sys.argv[1];p=json.load(sys.stdin)
         from budget_export import budget_xlsx,budget_pdf
-        {'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf}[mode](p)
+        from reference_export import reference_pdf,reference_xlsx
+        from flow_export import flow_pdf,flow_xlsx
+        from erp_export import erp_pdf,erp_xlsx
+        from treasury_io import preview as treasury_preview
+        from treasury_export import treasury_pdf,treasury_xlsx
+        {'erp-pdf':erp_pdf,'erp-xlsx':erp_xlsx,'treasury-preview':treasury_preview,'treasury-pdf':treasury_pdf,'treasury-xlsx':treasury_xlsx,'flow-pdf':flow_pdf,'flow-xlsx':flow_xlsx,'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf,'reference-pdf':reference_pdf,'reference-xlsx':reference_xlsx}[mode](p)
     except (ValueError,KeyError) as e: print(str(e),file=sys.stderr);sys.exit(2)
     except Exception as e: print('No se pudo leer o generar el documento ('+type(e).__name__+'). Verifica el formato y sus límites.',file=sys.stderr);sys.exit(2)

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+import {periodTriggers} from './erp-core.js';
 // On Render, do not silently fall back to ephemeral local storage.
 if ((process.env.RENDER==='true'||process.env.RENDER_SERVICE_ID||process.env.TURSO_DATABASE_URL||process.env.TURSO_AUTH_TOKEN) && (!process.env.TURSO_DATABASE_URL||!process.env.TURSO_AUTH_TOKEN)) throw new Error('Configura TURSO_DATABASE_URL y TURSO_AUTH_TOKEN antes de iniciar SISFIA.');
 const local = path.resolve(process.env.DB_PATH || './data/control.db');
@@ -27,6 +28,7 @@ export async function initSchema(){
   }
   await db.execute('CREATE INDEX IF NOT EXISTS idx_ops_import_batch ON ops(company_id,import_batch)');
   await db.execute('CREATE INDEX IF NOT EXISTS idx_ops_match ON ops(company_id,date,amount,ruc,receipt)');
+  for(const trigger of periodTriggers()) await db.execute(trigger);
 }
 export async function seed(){
   const username=process.env.ADMIN_USER || 'admin', password=process.env.ADMIN_PASS;

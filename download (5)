@@ -1,0 +1,25 @@
+node_modules/
+.env
+.env.*
+!.env.example
+data/
+backups/
+playwright-report/
+test-results/
+*.db
+*.db-wal
+*.db-shm
+
+__pycache__/
+*.pyc
+.venv/
+# Never commit live payroll / bank exports or confidential document samples
+planillas-reales/
+private/
+SISFIA-respaldo*.json
+SISFIA-planillas*.json
+*.xls
+*.xlsm
+*.pdf
+*.xlsx
+!scripts/presupuesto-la-salle.xlsx

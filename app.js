@@ -8,6 +8,7 @@ const canEdit=()=>state.user?.role!=='lector';
 const total=L=>L.reduce((s,o)=>s+Math.round(Number(o.amount)*100),0)/100;
 const refresh=async()=>{await loadAll();drawDash();drawReg();drawRes();drawPrv();drawCC();FinanceUI.loadCats().catch(()=>{});};
 const run=fn=>async e=>{const target=e?.currentTarget;const b=target?.tagName==='BUTTON'?target:target?.tagName==='FORM'?target.querySelector('[type=submit]'):null;if(b?.disabled){e?.preventDefault();return;}if(b)b.disabled=true;try{await fn(e)}catch(err){toast(err.message)}finally{if(b)b.disabled=false}};
+window.addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
 window.addEventListener('unhandledrejection',e=>{e.preventDefault();toast(e.reason?.message||'No se pudo completar la acción')});
 
 function toast(m){const t=$('#ts');t.textContent=m;t.classList.add('show');clearTimeout(window._t);window._t=setTimeout(()=>t.classList.remove('show'),3200)}
@@ -19,13 +20,13 @@ function setMsg(sel,txt,cls){const e=$(sel);e.textContent=txt;e.className='msg '
     const r=await api('/auth/me');
     state.user=r.user;state.company=r.company;
     if(r.user.mustChange){show('#login-form',false);show('#firstpass-form',true);return}
-    await loadAll();
-    enterApp();
+    await loadOrEnroll();
   }catch{
     show('#login-view',true);show('#app-view',false);
   }finally{show('#boot-status',false)}
 })();
 
+async function loadOrEnroll(){try{await loadAll();enterApp();}catch(e){if(!e.data?.enrollRequired)throw e;show('#login-view',false);show('#app-view',true);$('#u-name').textContent=state.user.name;$('#u-role').textContent=state.user.role;$('#company-name').textContent=state.company.name;$('#nav').classList.add('hidden');document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));$('#t-enroll-required').classList.add('on');PayrollUI.init();}}
 async function loadAll(){
   const [ops,prov,cc,directory]=await Promise.all([api('/ops'),api('/prov'),api('/cc'),api('/prov/directory')]);
   state.ops=ops;state.prov=prov;state.cc=cc;state.directory=directory;
@@ -38,12 +39,12 @@ $('#login-form').onsubmit=async e=>{
     const r=await api('/auth/login',{method:'POST',body:{
       companyCode:$('#l-company').value.trim(),
       username:$('#l-user').value.trim(),
-      password:$('#l-pass').value
+      password:$('#l-pass').value,...($('#l-otp').value?{otp:$('#l-otp').value}:{})
     }});
-    state.user=r.user;state.company=r.company;
+    state.user=r.user;state.company=r.company;$('#l-pass').value='';$('#l-otp').value='';
     if(r.mustChange){show('#login-form',false);show('#firstpass-form',true);return}
-    await loadAll();enterApp();
-  }catch(err){setMsg('#l-msg','⚠ '+err.message,'bad')}
+    await loadOrEnroll();
+  }catch(err){if(err.data?.mfaRequired){show('#l-otp-field',true);$('#l-otp').focus();}setMsg('#l-msg','⚠ '+err.message,'bad')}
 };
 
 $('#firstpass-form').onsubmit=async e=>{
@@ -52,7 +53,7 @@ $('#firstpass-form').onsubmit=async e=>{
     await api('/auth/change-password',{method:'POST',body:{
       newPassword:$('#fp-pass').value
     }});
-    state.user=(await api('/auth/me')).user;await loadAll();enterApp();
+    state.user=(await api('/auth/me')).user;await loadOrEnroll();
   }catch(err){setMsg('#fp-msg','⚠ '+err.message,'bad')}
 };
 
@@ -71,11 +72,14 @@ function enterApp(){
   $('#company-name').textContent=state.company.name;$('#today-label').textContent=new Intl.DateTimeFormat('es-PE',{dateStyle:'long',timeZone:'America/Lima'}).format(new Date());$('#r-f').value=today();$('#ci-date').value=today();$('#m-m').value=today().slice(0,7);
   ['#op-form','#prov-form','#d-new','#c-new','#d-sunat','#m-sunat','#bud-sunat'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
   drawDash();drawReg();drawRes();drawPrv();drawCC();
-  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);
+  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);ReferenceUI.init(state.user.role,refresh);FlowUI.init(state.user.role,refresh,openRecord);TreasuryUI.init(state.user.role);PayrollUI.init();ERPUI.init(state.user.role);
 }
 
 document.querySelectorAll('#nav button').forEach(b=>{
   b.onclick=()=>{
+    if(b.dataset.t!=='payroll'&&document.querySelector('#t-payroll').classList.contains('on')){if(!PayrollUI.canLeave())return;PayrollUI.clear();}
+    if(b.dataset.t!=='treasury'&&document.querySelector('#t-treasury').classList.contains('on')){if(!TreasuryUI.canLeave())return;TreasuryUI.clear();}
+    if(b.dataset.t!=='flow'&&document.querySelector('#t-flow').classList.contains('on')&&!FlowUI.canLeave())return;
     if(b.dataset.t!=='budget'&&document.querySelector('#t-budget').classList.contains('on')&&!BudgetUI.canLeave())return;
     if(b.dataset.t!=='imp'&&document.querySelector('#t-imp').classList.contains('on')){if(!FinanceUI.canLeave())return;FinanceUI.resetImport();}
     document.querySelectorAll('#nav button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
@@ -87,6 +91,12 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t==='imp')FinanceUI.openImport();
     if(b.dataset.t==='fin')FinanceUI.openReports();
     if(b.dataset.t==='budget')BudgetUI.open();
+    if(b.dataset.t==='refs')ReferenceUI.open();
+    if(b.dataset.t==='flow')FlowUI.open();
+    if(b.dataset.t==='treasury')TreasuryUI.open();
+    if(b.dataset.t==='erp')ERPUI.open();
+    if(b.dataset.t!=='erp')ERPUI.clear();
+    if(b.dataset.t==='payroll')PayrollUI.open().catch(e=>toast(e.message));
     window.scrollTo({top:0,behavior:'instant'});
   };
 });
@@ -205,7 +215,7 @@ $('#record-close').onclick=closeRecord;$('#record-cancel').onclick=closeRecord;r
 $('#record-form').onsubmit=async e=>{e.preventDefault();if(recordBusy||!recordEdit||!canEdit())return;const current=recordEdit,raw=Object.fromEntries(new FormData(e.target)),cash=current.source==='cash';let body={date:raw.date,amount:Number(raw.amount),category:raw.category.trim(),ruc:raw.ruc.trim(),receipt:raw.receipt.trim()};
  if(cash)Object.assign(body,{detail:raw.concept.trim(),provider:raw.provider.trim(),usd:raw.usd?Number(raw.usd):null});else Object.assign(body,{concept:raw.concept.trim(),provider_name:raw.provider.trim(),status:raw.status,bank:raw.bank.trim(),type:raw.type.trim(),bank_account:raw.bank_account.trim(),order_number:raw.order_number.trim()});
  recordBusy=true;$('#record-save').disabled=true;setMsg('#record-msg','Guardando…','');let saved=false;
- try{await api(cash?`/cc/${current.boxId}/items/${current.id}`:`/ops/${current.id}`,{method:'PUT',body});saved=true;recordDialog.close();await refresh();if($('#t-fin').classList.contains('on'))await FinanceUI.openReports();if($('#t-budget').classList.contains('on'))await BudgetUI.open();toast('Cambios guardados');}catch(err){if(saved)toast('Cambios guardados. No se pudo actualizar la vista; recarga la página.');else setMsg('#record-msg',err.message,'bad');}finally{recordBusy=false;$('#record-save').disabled=false;}
+ try{await api(cash?`/cc/${current.boxId}/items/${current.id}`:`/ops/${current.id}`,{method:'PUT',body});saved=true;recordDialog.close();await refresh();if($('#t-flow').classList.contains('on'))await FlowUI.open();if($('#t-fin').classList.contains('on'))await FinanceUI.openReports();if($('#t-budget').classList.contains('on'))await BudgetUI.open();toast('Cambios guardados');}catch(err){if(saved)toast('Cambios guardados. No se pudo actualizar la vista; recarga la página.');else setMsg('#record-msg',err.message,'bad');}finally{recordBusy=false;$('#record-save').disabled=false;}
 };
 document.addEventListener('click',e=>{const b=e.target.closest('[data-record]');if(b)openRecord(b.dataset.record,Number(b.dataset.id));});
 
@@ -275,7 +285,7 @@ async function loadAudit(reset){
   try{
     const data=await api('/audit?'+qs.toString());
     aTotal=data.total;
-    $('#a-tb').innerHTML=data.rows.map(r=>`<tr><td>${r.id}</td><td>${esc(r.created_at)}</td><td>${esc(r.user_name||r.username||'—')}</td><td><span style="font-size:11px;padding:2px 8px;border-radius:999px;background:var(--hd);color:var(--pri);font-weight:700">${esc(r.action)}</span></td><td>${esc(r.entity)}</td><td>${r.entity_id??''}</td><td style="font-size:11px">${esc(r.ip||'')}</td><td class="l" style="font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((r.payload||'').slice(0,80))}</td></tr>`).join('')||'<tr><td colspan="8" style="color:var(--mut)">Sin registros.</td></tr>';
+    $('#a-tb').innerHTML=data.rows.map(r=>`<tr><td>${r.id}</td><td>${esc(r.created_at)}</td><td>${esc(r.user_name||r.username||'—')}</td><td><span style="font-size:11px;padding:2px 8px;border-radius:999px;background:var(--hd);color:var(--pri);font-weight:700">${esc(r.action)}</span></td><td>${esc(r.entity)}</td><td>${r.entity_id??''}</td><td style="font-size:11px">${esc(r.ip||'')}</td><td class="l" style="font-size:11px;max-width:380px;white-space:normal">${r.payload?`<details class="audit-payload"><summary>Ver cambios</summary><pre>${esc(r.payload)}</pre></details>`: '—'}</td></tr>`).join('')||'<tr><td colspan="8" style="color:var(--mut)">Sin registros.</td></tr>';
     $('#a-page').textContent=`Mostrando ${aTotal?aOffset+1:0}–${Math.min(aOffset+aLimit,aTotal)} de ${aTotal}`;
     $('#a-prev').disabled=aOffset===0;
     $('#a-next').disabled=aOffset+aLimit>=aTotal;
@@ -286,17 +296,14 @@ $('#a-export')?.addEventListener('click',()=>window.open('/api/audit/export.csv'
 $('#a-prev')?.addEventListener('click',()=>{aOffset=Math.max(0,aOffset-aLimit);loadAudit(false)});
 $('#a-next')?.addEventListener('click',()=>{aOffset+=aLimit;loadAudit(false)});
 
-$('#btn-logout').onclick=run(async()=>{if(!confirm('¿Cerrar sesión?'))return;await api('/auth/logout',{method:'POST',body:{}});location.reload()});
+$('#btn-logout').onclick=run(async()=>{if(!confirm('¿Cerrar sesión?'))return;PayrollUI.clear(false);await api('/auth/logout',{method:'POST',body:{}});location.reload()});
 $('#btn-password').onclick=()=>show('#password-form',true);$('#pw-cancel').onclick=()=>{ $('#password-form').reset();show('#password-form',false);};$('#password-form').onsubmit=run(async e=>{e.preventDefault();await api('/auth/change-password',{method:'POST',body:{currentPassword:$('#pw-current').value,newPassword:$('#pw-new').value}});e.target.reset();show('#password-form',false);toast('Contraseña actualizada');});
 $('#btn-theme').onclick=()=>{const cur=document.documentElement.getAttribute('data-theme');const next=cur==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',next);try{localStorage.setItem('theme',next)}catch{}};
 try{const th=localStorage.getItem('theme');if(th)document.documentElement.setAttribute('data-theme',th);}catch{}
 
-$('#d-export-all').onclick=async function(){
-  const a=document.createElement('a');
-  a.href='/api/export/all.json';
-  a.download='respaldo.json';
-  a.click();
-};
+$('#d-export-all').onclick=run(async()=>{
+  const r=await fetch('/api/export/all.json',{credentials:'include',cache:'no-store'});if(!r.ok)throw Error((await r.json()).error||'No se pudo exportar');const a=document.createElement('a'),u=URL.createObjectURL(await r.blob());a.href=u;a.download=(r.headers.get('Content-Disposition')||'').match(/filename="([^"]+)"/)?.[1]||'respaldo.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+});
 
 function resetOp(){EDID=null;$('#r-add').textContent='Agregar';$('#op-title').textContent='Nueva operación';show('#r-cancel',false);['r-c','r-p','r-m','r-r','r-cat','r-provider','r-cci','r-order'].forEach(i=>$('#'+i).value='');}
 $('#r-cancel').onclick=resetOp;['#r-fm','#r-search','#r-status','#r-category-filter'].forEach(id=>$(id).addEventListener('input',drawReg));$('#m-m').onchange=()=>{monthMetric='total';monthPage=0;$('#m-search').value='';drawRes()};$('#d-new').onclick=()=>document.querySelector('#nav button[data-t=reg]').click();$('#d-import').onclick=()=>document.querySelector('#nav button[data-t=imp]').click();$('#d-finance').onclick=()=>document.querySelector('#nav button[data-t=fin]').click();
@@ -309,3 +316,12 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
 })();
+$('#d-refs').onclick=()=>{ReferenceUI.year($('#d-period').value.slice(0,4));document.querySelector('#nav button[data-t=refs]').click();};
+$('#m-refs').onclick=()=>{ReferenceUI.year($('#m-m').value.slice(0,4));document.querySelector('#nav button[data-t=refs]').click();};
+
+$('#bud-manage-refs').onclick=()=>{ReferenceUI.year($('#bud-year').value);document.querySelector('#nav button[data-t=refs]').click();};
+async function exportMonth(format){const mo=$('#m-m').value;if(!/^20\d{2}-(0[1-9]|1[0-2])$/.test(mo))throw Error('Selecciona un mes válido.');const end=new Date(Date.UTC(Number(mo.slice(0,4)),Number(mo.slice(5)),0)).getUTCDate();const q=new URLSearchParams({source:'ops',group:'category',from:mo+'-01',to:mo+'-'+end,format,search:$('#m-search').value});if(monthMetric==='paid'||monthMetric==='pending')q.set('status',monthMetric==='paid'?'Pagado':'Pendiente');const r=await fetch('/api/finance/report?'+q);if(!r.ok)throw Error((await r.json()).error||'No se pudo exportar');const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download=`SISFIA-detalle-${mo}-${monthMetric}.${format}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+$('#m-pdf').onclick=run(()=>exportMonth('pdf'));$('#m-xlsx').onclick=run(()=>exportMonth('xlsx'));
+
+$('#d-treasury').onclick=()=>document.querySelector('#nav button[data-t=treasury]').click();$('#imp-treasury').onclick=()=>{document.querySelector('#nav button[data-t=treasury]').click();if($('#t-treasury').classList.contains('on'))$('#tr-tab-import').click();};
+$('#d-flow').onclick=()=>document.querySelector('#nav button[data-t=flow]').click();

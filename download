@@ -10,3 +10,12 @@ test-results
 **/__pycache__
 *.pyc
 .venv
+planillas-reales
+private
+**/*.xls
+**/*.xlsm
+**/*.pdf
+**/*.xlsx
+!scripts/presupuesto-la-salle.xlsx
+SISFIA-respaldo*.json
+SISFIA-planillas*.json
