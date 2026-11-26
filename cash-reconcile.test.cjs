@@ -1,0 +1,8 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+test('caja con diferencia: exige corrección, conserva original y acepta saldo por reembolsar',async()=>{
+ const {reconcileCash}=await import('../server/cash-reconcile.js');const x={rows:[{amount:1500},{amount:50.80}],meta:{fund:1500},originalFund:1500,declaredTotal:1500};
+ assert.ok(reconcileCash(x).error);assert.ok(reconcileCash({...x,correctedTotal:1500,correctionNote:'Revisado'}).error);assert.ok(reconcileCash({...x,correctedTotal:1550.8,correctionNote:'  '}).error);
+ assert.deepEqual(reconcileCash({...x,correctedTotal:1550.8,correctionNote:'Revisado'}),{declaredTotal:1500,correctedTotal:1550.8,actualTotal:1550.8,difference:50.8,correctionNote:'Revisado',originalFund:1500,fund:1500,balance:-50.8});
+});
+test('fondos variables y diferencia de centavos',async()=>{const {reconcileCash}=await import('../server/cash-reconcile.js');const r=reconcileCash({rows:[{amount:1200.01},{amount:800.02}],meta:{fund:2850},originalFund:2500,declaredTotal:2000.03});assert.equal(r.actualTotal,2000.03);assert.equal(r.balance,849.97);assert.equal(r.correctedTotal,null);assert.equal(r.originalFund,2500);});
+test('controles de carga y corrección conectados',()=>{const h=fs.readFileSync('public/index.html','utf8'),j=fs.readFileSync('public/finance-ui.js','utf8');for(const id of ['im-drop','im-browse','im-correct-total','im-use-sum','im-correction-note'])assert.ok(h.includes(`id="${id}"`)&&j.includes(`#${id}`));assert.match(j,/addEventListener\('drop'/);assert.match(j,/correctedTotal:amount/);assert.match(fs.readFileSync('server/routes/finance.js','utf8'),/reconcileCash\(b\)/);});

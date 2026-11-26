@@ -1,3 +1,7 @@
+## 3.7.1
+- Registro dedicado de SUNAT desde Inicio, Resumen y Presupuesto; sugerencias desde la referencia, fecha efectiva y periodo fiscal independiente.
+- Validación de duplicados por comprobante, fecha e importe, con auditoría y actualización de los totales.
+
 ## 3.7.0 — Conciliación mensual y pagos directos SUNAT
 
 - Conciliación por fecha, faltantes y excesos separados, posibles duplicados.
