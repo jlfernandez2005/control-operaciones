@@ -1,0 +1,19 @@
+# SISFIA 4.1.0 — Bancos e ingresos
+
+Actualización acumulativa de 4.0.0. Respaldar Turso, publicar los archivos del proyecto en el repositorio y desplegar el mismo servicio Docker. La migración añade `treasury_documents` sin modificar las tablas anteriores. El respaldo JSON administrativo incluye esta tabla. No subir los PDF bancarios o escolares a GitHub.
+
+## Uso
+
+1. Entrar a **Bancos e ingresos** (menú, acceso rápido o enlace desde Importar informes).
+2. Seleccionar **Importar documentos**, arrastrar los PDF uno o varios a la vez. Cada archivo se analiza en el servidor y se valida con los totales y, en bancos, con el saldo tras cada movimiento. Confirmar el guardado de cada documento; puede omitirse y seguir con la cola.
+3. En Consultas, elegir año y mes (o todo el año). La tabla documental admite consulta, reemplazo por nueva importación y eliminación por administrador. El mismo archivo no duplica datos. Las categorías bancarias son editables con motivo; los valores y saldos originales no se editan. Solo se guardan los datos estructurados, no el PDF.
+4. Filtrar por fuente, banco, tipo de ingreso/cargo, fecha, categoría, estado y búsqueda. Agrupar por rubro, mes, fecha, vencimiento, banco, estado o proveedor/persona. Las exportaciones PDF y Excel incluyen agrupación, documentos y conciliaciones; elegir solo resumen o todo el detalle. Las consultas de operaciones, caja chica, resúmenes y flujo son referencias independientes: NO se suman con bancos ni Sallenet.
+5. Conciliación: compara el detalle Sallenet con el resumen por concepto y la recaudación física/virtual de Scotiabank, por día y mes. La comparación de cargos contra operaciones pagadas por banco/fecha es diagnóstica: puede incluir comisiones, ITF, transferencias y fechas distintas. No genera operaciones ni acredita una identidad individual.
+6. Para usar Sallenet en Flujo de caja: administrador, **Incorporar al flujo**. Se agrupan los importes por día y partida, sin duplicar abonos ni resúmenes. Si ya existen ingresos operativos del mes o un resumen de ingresos que no cuadra, se bloquea la publicación hasta revisar. Matrícula, pensiones del año y de años anteriores se clasifican separadamente. Mora, PRP y otros ingresos (incluido derecho de inscripción) van a Otros ingresos operativos; no se presume que inscripción sea cuota de ingreso. Para corregir o reemplazar una cobranza publicada, retirar su incorporación primero. El retiro solo borra los movimientos de flujo generados por ese documento. No se crean egresos a partir de los cargos bancarios; seguir usando las operaciones y caja chica conciliadas existentes.
+
+## Alcance y seguridad
+
+- Reconoce PDF con texto de los formatos de Interbank, Scotiabank en soles, Sallenet Pensiones pagadas y Resumen de ingresos por concepto. No conexión directa al banco/Sallenet ni OCR. Formatos que cambien sustancialmente pueden requerir adaptación. Hasta 25 MB/100 páginas, 6000 líneas estructuradas y 750 KB de JSON por documento. PDF de exportación con detalle hasta 2500 filas, Excel hasta 12000; elegir resumen o reducir el periodo.
+- Acceso de administrador/editor al nuevo módulo por contener datos bancarios y de estudiantes; eliminar, reemplazar y publicar solo administrador. No almacenar credenciales ni datos reales en el código. El usuario debe conservar PDF originales y proteger sus respaldos y exportaciones. El documento de julio de ejemplo no está incluido en el ZIP.
+- Los saldos bancarios son saldos de las cuentas cargadas, no saldo total institucional si hay cuentas faltantes. No sumar saldos mensuales. Ingresos de Sallenet y abonos bancarios pueden representar la misma cobranza.
+- Las pruebas locales de los cuatro archivos de julio comprobaron los importes impresos, 60 movimientos Interbank, 113 Scotiabank, 329 cobros Sallenet y 17 líneas del resumen por concepto; 24 días de recaudación coinciden. No se consultó ni modificó Turso de producción. 
