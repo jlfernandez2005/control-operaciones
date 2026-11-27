@@ -1,7 +1,7 @@
 {
   "name": "sisfia",
-  "version": "5.2.1",
-  "description": "SISFIA \u00b7 Sistema Financiero Administrativo",
+  "version": "5.2.2",
+  "description": "SISFIA · Sistema Financiero Administrativo",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
@@ -27,7 +27,8 @@
     "test:payroll": "node --test tests/security-payroll.test.cjs && python3 tests/payroll_documents_test.py",
     "test:storage": "node --test tests/storage-security.test.cjs",
     "test:erp": "node --test tests/erp.test.cjs",
-    "test:daily": "node --test tests/daily.test.cjs && python3 tests/daily_documents_test.py"
+    "test:daily": "node --test tests/daily.test.cjs && python3 tests/daily_documents_test.py",
+    "test:validation": "node --test tests/request-shape.test.cjs tests/zod-compat.test.cjs"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
@@ -40,12 +41,13 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "zod": "^3.23.8"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
     "supertest": "^7.0.0",
-    "vitest": "^2.1.1"
+    "vite": "8.4.0",
+    "vitest": "5.1.2"
   },
   "engines": {
     "node": ">=22 <23"

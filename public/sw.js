@@ -1,4 +1,4 @@
-const CACHE='ctrl-ops-v5.2.1';
+const CACHE='ctrl-ops-v5.2.2';
 const ASSETS=['/','/index.html','/app.js','/app-core.js','/finance-core.js','/finance-ui.js','/budget-ui.js','/reference-ui.js','/flow-ui.js','/treasury-ui.js','/payroll-ui.js','/erp-ui.js','/navigation.js','/daily-ui.js','/icons/sisfia-product.png','/icons/adn-lasallista.png','/icons/sisfia-mark.png','/icons/sisfia-logo-full.png','/favicon.ico','/icons/icon-32.png','/styles.css','/manifest.webmanifest','/icons/icon-192.png','/icons/icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('ctrl-ops-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

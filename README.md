@@ -1,4 +1,4 @@
-# SISFIA 5.2.1 — Operaciones diarias y reportes institucionales
+# SISFIA 5.2.2 — Operaciones diarias y reportes institucionales
 
 Corrección de arranque en Turso: se ignoran los comentarios SQL antes de separar instrucciones.
 

@@ -1,3 +1,9 @@
+# 5.2.2 — Candidato de seguridad
+
+- Zod 4.6.7 exacto y adaptación de los dos esquemas de diccionario de flujo.
+- Límites de complejidad JSON previos a validación y máximo 20 errores devueltos.
+- Sin cambios en la base de datos. Requiere generar package-lock.json y superar auditorías y pruebas antes de desplegar.
+
 # 5.2.1 — Corrección de arranque en Turso
 
 - El inicializador omite comentarios SQL y respeta literales entrecomillados.
