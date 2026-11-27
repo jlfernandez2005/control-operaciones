@@ -1,3 +1,9 @@
+# 5.2.1 — Corrección de arranque en Turso
+
+- El inicializador omite comentarios SQL y respeta literales entrecomillados.
+- Pruebas de regresión de ejecución individual y migración repetible con datos.
+- No cambia el esquema, las credenciales ni las operaciones.
+
 # 5.2.0 — Operaciones diarias
 
 - Registro de lotes de pagos en `ops` con idempotencia, validación, posibles duplicados y auditoría.
