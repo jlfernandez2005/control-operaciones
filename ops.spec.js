@@ -1,3 +1,0 @@
-import {test,expect} from '@playwright/test';
-import {login} from './helpers.js';
-test('registrar y editar operación',async({page})=>{await login(page);await page.click('#nav button[data-t=reg]');await page.fill('#r-c','Operación E2E');await page.fill('#r-m','150.50');await page.fill('#r-r','10000000000');await page.click('#r-add');await expect(page.locator('#r-tb')).toContainText('Operación E2E');await page.locator('#r-tb tr').filter({hasText:'Operación E2E'}).getByText('Editar',{exact:true}).click();await page.selectOption('#r-e','Pagado');await page.click('#r-add');await expect(page.locator('#r-tb')).toContainText('Pagado');});

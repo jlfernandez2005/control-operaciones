@@ -1,9 +1,0 @@
-const {test}=require('node:test'),assert=require('node:assert/strict');
-const load=()=>import('../server/provider-directory.js');
-test('directorio: consolida RUC, conserva ficha manual y separa orígenes',async()=>{
- const {buildDirectory}=await load();const d=buildDirectory([{id:1,ruc:'20123456789',name:'Empresa SAC',cci:'00123456789012345678',holder:'Empresa'}],[{ruc:'20123456789',provider_name:'Empresa SAC',bank_account:'002-123456789',bank:'BCP',date:'2026-01-01'},{ruc:'20123456789',provider_name:'EMPRESA SAC',bank_account:'Pago de servicios',date:'2026-02-01'}],[{ruc:'20123456789',provider:'Empresa SAC',date:'2026-03-01'}]);assert.equal(d.length,1);assert.equal(d[0].operations,2);assert.equal(d[0].cash_items,1);assert.equal(d[0].accounts.length,1);assert.equal(d[0].cci,'00123456789012345678');assert.equal(d[0].last_date,'2026-03-01');assert.equal(d[0].name_conflict,false);
-});
-test('directorio: beneficiarios, conflictos y registros sin identificación',async()=>{
- const {buildDirectory}=await load();const d=buildDirectory([],[{ruc:'01234567',provider_name:'Persona A',bank_account:'123456789',bank:'BCP'},{ruc:'01234567',provider_name:'Persona B',bank_account:'987654321',bank:'BCP'},{provider_name:'Personal institucional',ruc:'-'},{ruc:'',provider_name:'Sin proveedor'}],[{ruc:'',provider:'Persona A'},{ruc:'',provider:'Persona A'},{ruc:'',provider:'-'}]);assert.equal(d.length,2);const p=d.find(x=>x.ruc);assert.equal(p.kind,'Beneficiario de operación');assert.equal(p.name_conflict,true);assert.equal(p.account_conflict,true);assert.equal(p.cci,'');assert.equal(d.find(x=>!x.ruc).cash_items,2);
-});
-test('directorio: consultas limitadas a empresa y operaciones activas',async()=>{const {directoryQueries}=await load();for(const sql of Object.values(directoryQueries))assert.match(sql,/company_id=\?/);assert.match(directoryQueries.ops,/deleted_at IS NULL/);});

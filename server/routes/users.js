@@ -31,9 +31,10 @@ r.post('/', async (req, res) => {
 r.delete('/:id', async (req, res) => {
   if (Number(req.params.id) === req.user.uid) return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
   const q=await db.execute({sql:'UPDATE users SET active=0 WHERE id=? AND company_id=? AND active=1',args:[req.params.id,req.user.cid]});if(!q.rowsAffected)return res.status(404).json({error:'Usuario no encontrado'});
+  await db.execute({sql:'DELETE FROM auth_sessions WHERE company_id=? AND user_id=?',args:[req.user.cid,Number(req.params.id)]});
   await audit({ companyId: req.user.cid, userId: req.user.uid, action: 'delete', entity: 'user', entityId: Number(req.params.id), req });
   res.json({ ok: true });
 });
 
-r.post('/:id/reset-password',async(req,res)=>{if(Number(req.params.id)===req.user.uid)return res.status(400).json({error:'No puedes restablecer tu propia contraseña desde aquí'});const b=validate(z.object({password:passwordSchema}),req,res);if(!b)return;const q=await db.execute({sql:'UPDATE users SET pass_hash=?,must_change=1,q=NULL,a_hash=NULL WHERE id=? AND company_id=? AND active=1',args:[await hashPassword(b.password),req.params.id,req.user.cid]});if(!q.rowsAffected)return res.status(404).json({error:'Usuario no encontrado'});await audit({companyId:req.user.cid,userId:req.user.uid,action:'reset_password',entity:'user',entityId:Number(req.params.id),req});res.json({ok:true});});
+r.post('/:id/reset-password',async(req,res)=>{if(Number(req.params.id)===req.user.uid)return res.status(400).json({error:'No puedes restablecer tu propia contraseña desde aquí'});const b=validate(z.object({password:passwordSchema}),req,res);if(!b)return;const q=await db.execute({sql:'UPDATE users SET pass_hash=?,must_change=1,q=NULL,a_hash=NULL WHERE id=? AND company_id=? AND active=1',args:[await hashPassword(b.password),req.params.id,req.user.cid]});if(!q.rowsAffected)return res.status(404).json({error:'Usuario no encontrado'});await db.execute({sql:'DELETE FROM auth_sessions WHERE company_id=? AND user_id=?',args:[req.user.cid,Number(req.params.id)]});await audit({companyId:req.user.cid,userId:req.user.uid,action:'reset_password',entity:'user',entityId:Number(req.params.id),req});res.json({ok:true});});
 export default r;

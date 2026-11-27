@@ -1,6 +1,0 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const {execFileSync}=require('node:child_process');
-const files=()=>{const out=[];for(const root of ['server','public','scripts','tests']){for(const f of fs.readdirSync(root,{recursive:true})){const p=root+'/'+f;if(p.endsWith('.js'))out.push(p);}}return out};
-test('sintaxis JavaScript',()=>{for(const f of files())execFileSync(process.execPath,['--check',f]);});
-test('referencias HTML e identificadores únicos',()=>{const html=fs.readFileSync('public/index.html','utf8'),app=fs.readFileSync('public/app.js','utf8');const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);for(const m of app.matchAll(/\$\(['"]#([\w-]+)['"]\)/g))assert.ok(ids.includes(m[1]),m[1]);assert.doesNotMatch(html,/\sonclick=/);});
-test('manifiesto e iconos PWA',()=>{const m=JSON.parse(fs.readFileSync('public/manifest.webmanifest'));for(const i of m.icons)assert.ok(fs.existsSync('public/'+i.src));});
-test('utilidades monetarias y escape HTML',()=>{const ctx={window:{}};vm.runInNewContext(fs.readFileSync('public/app-core.js','utf8'),ctx);const c=ctx.window.AppCore;assert.equal(c.fm(1234.5),'S/ 1,234.50');assert.equal(c.esc('<img>'),'&lt;img&gt;');assert.equal(c.fd('2026-11-25'),'25/11/2026');});

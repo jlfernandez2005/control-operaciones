@@ -161,8 +161,9 @@ if __name__=='__main__':
         from budget_export import budget_xlsx,budget_pdf
         from reference_export import reference_pdf,reference_xlsx
         from flow_export import flow_pdf,flow_xlsx
+        from erp_export import erp_pdf,erp_xlsx
         from treasury_io import preview as treasury_preview
         from treasury_export import treasury_pdf,treasury_xlsx
-        {'treasury-preview':treasury_preview,'treasury-pdf':treasury_pdf,'treasury-xlsx':treasury_xlsx,'flow-pdf':flow_pdf,'flow-xlsx':flow_xlsx,'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf,'reference-pdf':reference_pdf,'reference-xlsx':reference_xlsx}[mode](p)
+        {'erp-pdf':erp_pdf,'erp-xlsx':erp_xlsx,'treasury-preview':treasury_preview,'treasury-pdf':treasury_pdf,'treasury-xlsx':treasury_xlsx,'flow-pdf':flow_pdf,'flow-xlsx':flow_xlsx,'preview':preview,'xlsx':xlsx,'pdf':pdf,'budget-xlsx':budget_xlsx,'budget-pdf':budget_pdf,'reference-pdf':reference_pdf,'reference-xlsx':reference_xlsx}[mode](p)
     except (ValueError,KeyError) as e: print(str(e),file=sys.stderr);sys.exit(2)
     except Exception as e: print('No se pudo leer o generar el documento ('+type(e).__name__+'). Verifica el formato y sus límites.',file=sys.stderr);sys.exit(2)
