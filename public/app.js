@@ -72,17 +72,23 @@ function enterApp(){
   $('#company-name').textContent=state.company.name;$('#today-label').textContent=new Intl.DateTimeFormat('es-PE',{dateStyle:'long',timeZone:'America/Lima'}).format(new Date());$('#r-f').value=today();$('#ci-date').value=today();$('#m-m').value=today().slice(0,7);
   ['#op-form','#prov-form','#d-new','#c-new','#d-sunat','#m-sunat','#bud-sunat'].forEach(id=>show(id,canEdit()));show('#d-export-all',isAdmin());show('#r-archive',isAdmin());
   drawDash();drawReg();drawRes();drawPrv();drawCC();
-  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);ReferenceUI.init(state.user.role,refresh);FlowUI.init(state.user.role,refresh,openRecord);TreasuryUI.init(state.user.role);PayrollUI.init();ERPUI.init(state.user.role);
+  FinanceUI.init({role:state.user.role,refresh,openRecord});BudgetUI.init(state.user.role,refresh);ReferenceUI.init(state.user.role,refresh);FlowUI.init(state.user.role,refresh,openRecord);TreasuryUI.init(state.user.role);PayrollUI.init();ERPUI.init(state.user.role);DailyUI.init(state.user.role,refresh,()=>state.prov);
 }
 
-document.querySelectorAll('#nav button').forEach(b=>{
-  b.onclick=()=>{
+document.querySelectorAll('#nav button[data-t]').forEach(b=>{
+  b.onclick=()=>navigate(b);
+});
+function navigate(b,shortcut=null){
+    if(!NavUI.permitted(b))return false;
+    if(b.dataset.t==='treasury'&&$('#t-treasury').classList.contains('on')&&!TreasuryUI.canLeave())return false;
+    if(b.dataset.t==='payroll'&&$('#t-payroll').classList.contains('on')&&!PayrollUI.canLeave())return false;
     if(b.dataset.t!=='payroll'&&document.querySelector('#t-payroll').classList.contains('on')){if(!PayrollUI.canLeave())return;PayrollUI.clear();}
     if(b.dataset.t!=='treasury'&&document.querySelector('#t-treasury').classList.contains('on')){if(!TreasuryUI.canLeave())return;TreasuryUI.clear();}
     if(b.dataset.t!=='flow'&&document.querySelector('#t-flow').classList.contains('on')&&!FlowUI.canLeave())return;
     if(b.dataset.t!=='budget'&&document.querySelector('#t-budget').classList.contains('on')&&!BudgetUI.canLeave())return;
     if(b.dataset.t!=='imp'&&document.querySelector('#t-imp').classList.contains('on')){if(!FinanceUI.canLeave())return;FinanceUI.resetImport();}
-    document.querySelectorAll('#nav button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
+    NavUI.select(b,shortcut,state.user?.role);
+    document.querySelectorAll('#nav button[data-t]').forEach(x=>x.setAttribute('aria-selected',x===b&&!shortcut?'true':'false'));
     document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id==='t-'+b.dataset.t));
     if(b.dataset.t==='dash')drawDash();
     if(b.dataset.t==='res')drawRes();
@@ -95,11 +101,15 @@ document.querySelectorAll('#nav button').forEach(b=>{
     if(b.dataset.t==='flow')FlowUI.open();
     if(b.dataset.t==='treasury')TreasuryUI.open();
     if(b.dataset.t==='erp')ERPUI.open();
+    if(b.dataset.t==='daily')DailyUI.open(shortcut?.dataset.view||'all');
+    if(b.dataset.t!=='daily')DailyUI.clearPreview();
     if(b.dataset.t!=='erp')ERPUI.clear();
     if(b.dataset.t==='payroll')PayrollUI.open().catch(e=>toast(e.message));
+    NavUI.after(b,shortcut);
     window.scrollTo({top:0,behavior:'instant'});
-  };
-});
+    return true;
+}
+NavUI.bind(navigate,()=>state.user?.role);
 
 let dashRequest=0;
 function drawDash(){
@@ -315,7 +325,6 @@ for(const id of ['#login-form','#firstpass-form']){const fn=$(id).onsubmit;$(id)
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
-})();
 $('#d-refs').onclick=()=>{ReferenceUI.year($('#d-period').value.slice(0,4));document.querySelector('#nav button[data-t=refs]').click();};
 $('#m-refs').onclick=()=>{ReferenceUI.year($('#m-m').value.slice(0,4));document.querySelector('#nav button[data-t=refs]').click();};
 
@@ -325,3 +334,5 @@ $('#m-pdf').onclick=run(()=>exportMonth('pdf'));$('#m-xlsx').onclick=run(()=>exp
 
 $('#d-treasury').onclick=()=>document.querySelector('#nav button[data-t=treasury]').click();$('#imp-treasury').onclick=()=>{document.querySelector('#nav button[data-t=treasury]').click();if($('#t-treasury').classList.contains('on'))$('#tr-tab-import').click();};
 $('#d-flow').onclick=()=>document.querySelector('#nav button[data-t=flow]').click();
+
+})();

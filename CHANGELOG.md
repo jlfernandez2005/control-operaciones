@@ -1,3 +1,21 @@
+# 5.2.0 — Operaciones diarias
+
+- Registro de lotes de pagos en `ops` con idempotencia, validación, posibles duplicados y auditoría.
+- Consulta por fechas y exportación institucional PDF/Excel; ambos logos y ADN del modelo.
+- Navegación 5.1.0 conservada; nuevo acceso desde Operaciones y Centro de reportes.
+- Una tabla aditiva `daily_batches`, compatible con respaldos previos.
+
+## 5.1.0 — Navegación ERP y MFA
+- Menú desplegable, buscador, modo compacto y vistas específicas de administración y planillas.
+- Formularios específicos y paneles de indicadores; QR local de MFA, regeneración y cuenta regresiva.
+- Corrección de accesos directos heredados. Sin cambios SQL.
+
+## 5.0.1 — Navegación institucional
+
+- Menú agrupado, iconos, selección visible y desplazamiento vertical sin columnas accidentales.
+- Auditoría y Usuarios conservan las restricciones originales; menú adaptable a pantallas estrechas.
+- Sin cambios de esquema ni de API.
+
 ## 5.0.0 — candidata a validación
 
 - Gestión administrativa: compras, obligaciones, activos, centros de costos, documentos cifrados.

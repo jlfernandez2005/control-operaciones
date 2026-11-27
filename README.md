@@ -1,4 +1,10 @@
-# SISFIA 5.0.0 — Gestión administrativa integral (candidata a validación)
+# SISFIA 5.2.0 — Operaciones diarias y reportes institucionales
+
+[Guía de operaciones diarias y actualización](docs/SISFIA-5.2.0.md).
+
+# SISFIA 5.1.0 — Navegación ERP y seguridad (candidata a validación)
+
+[Guía de SISFIA 5.1.0 y alcance de la actualización](docs/SISFIA-5.1.0.md).
 
 **Antes de actualizar producción:** consulta [SISFIA 5.0: alcance, migración y validación](docs/SISFIA-5.0.md). Mantén la base Turso y las claves originales; respalda y prueba en una copia independiente.
 

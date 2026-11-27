@@ -22,6 +22,7 @@ import treasuryRouter from './routes/treasury.js';
 import payrollRouter from './routes/payroll.js';
 import securityRouter from './routes/security.js';
 import erpRouter from './routes/erp.js';
+import dailyRouter from './routes/daily.js';
 const app=express(), PORT=process.env.PORT||3000, pub=fileURLToPath(new URL('../public/',import.meta.url));
 app.disable('x-powered-by');
 if(process.env.TRUST_PROXY==='1')app.set('trust proxy',1);
@@ -37,10 +38,10 @@ app.use('/api',(req,res,next)=>{
 });
 app.use('/api',rateLimit({windowMs:60_000,max:240,standardHeaders:true,legacyHeaders:false,message:{error:'Demasiadas solicitudes'}}));
 const standardJson=express.json({limit:'128kb'}), importJson=express.json({limit:'2mb'});
-app.use((req,res,next)=>['/api/finance/preview','/api/treasury/preview','/api/treasury/save','/api/payroll/inspect','/api/payroll/preview','/api/payroll/import','/api/payroll/restore-backup'].includes(req.path)||/^\/api\/erp\/attachment\/\d+$/.test(req.path)?next():['/api/finance/import','/api/finance/import-cash','/api/budget/reference','/api/flow/entries'].includes(req.path)?importJson(req,res,next):standardJson(req,res,next));
+app.use((req,res,next)=>['/api/finance/preview','/api/treasury/preview','/api/treasury/save','/api/payroll/inspect','/api/payroll/preview','/api/payroll/import','/api/payroll/restore-backup'].includes(req.path)||/^\/api\/erp\/attachment\/\d+$/.test(req.path)?next():['/api/finance/import','/api/finance/import-cash','/api/budget/reference','/api/flow/entries','/api/daily/batch'].includes(req.path)?importJson(req,res,next):standardJson(req,res,next));
 // Express 4 no propaga automáticamente rechazos de handlers async.
 function wrap(router){for(const l of router.stack){if(l.route){for(const h of l.route.stack){const fn=h.handle;if(fn.constructor.name==='AsyncFunction')h.handle=(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);}}}return router;}
-for(const [name,router] of Object.entries({auth:authRouter,ops:opsRouter,prov:provRouter,cc:ccRouter,users:usersRouter,companies:compRouter,export:exportRouter,audit:auditRouter,finance:financeRouter,budget:budgetRouter,flow:flowRouter,treasury:treasuryRouter,payroll:payrollRouter,security:securityRouter,erp:erpRouter}))app.use('/api/'+name,wrap(router));
+for(const [name,router] of Object.entries({auth:authRouter,ops:opsRouter,prov:provRouter,cc:ccRouter,users:usersRouter,companies:compRouter,export:exportRouter,audit:auditRouter,finance:financeRouter,budget:budgetRouter,flow:flowRouter,treasury:treasuryRouter,payroll:payrollRouter,security:securityRouter,erp:erpRouter,daily:dailyRouter}))app.use('/api/'+name,wrap(router));
 app.use('/api',(_req,res)=>res.status(404).json({error:'No encontrado'}));
 app.use(express.static(pub,{setHeaders:(res)=>res.set('Cache-Control','no-cache')}));
 app.get('/',(_req,res)=>res.sendFile(path.join(pub,'index.html')));

@@ -12,6 +12,7 @@ r.get('/all.json',async(req,res)=>{
  const boxes=cc.rows.map(c=>({...c,items:items.rows.filter(i=>i.cc_id===c.id)}));
  const content={generatedAt:new Date().toISOString(),ops:ops.rows,prov:prov.rows,cc:boxes,imports:batches.rows,budget:{lines:plans.rows,cashLinks:links.rows,monthlyReferences:refs.rows,dateLinks:dateLinks.rows},flow:{entries:flowEntries.rows,classification:flowClassification.rows,years:flowYears.rows},treasury:treasury.rows};
  if(encrypted){const q=await db.batch([{sql:'SELECT * FROM payroll_documents WHERE company_id=?',args:[cid]},{sql:'SELECT * FROM payroll_history WHERE company_id=?',args:[cid]}],'read');content.payroll={documents:q[0].rows,history:q[1].rows};}
+ content.dailyBatches=(await db.execute({sql:'SELECT * FROM daily_batches WHERE company_id=?',args:[cid]})).rows;
  content.erp={};for(const table of ['erp_access','erp_policy','erp_records','erp_attachments','erp_allocations','erp_bank_links','erp_bank_members','erp_periods'])content.erp[table]=(await db.execute({sql:`SELECT * FROM ${table} WHERE company_id=?`,args:[cid]})).rows;
  await audit({companyId:cid,userId:req.user.uid,action:'export',entity:'backup',payload:{encrypted},req});
  return res.attachment('SISFIA-respaldo-cifrado.json').json({version:1,company:cid,payload:seal(content,`general-backup:${cid}`)});

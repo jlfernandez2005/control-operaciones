@@ -184,3 +184,16 @@ CREATE TABLE IF NOT EXISTS erp_bank_members (
 CREATE TABLE IF NOT EXISTS erp_attachments (
  company_id INTEGER NOT NULL REFERENCES companies(id), record_id INTEGER NOT NULL REFERENCES erp_records(id), digest TEXT NOT NULL, filename TEXT NOT NULL, content_box TEXT NOT NULL, bytes INTEGER NOT NULL CHECK(bytes>0), revision INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(company_id,record_id)
 );
+
+-- Daily batches are metadata only; the financial source is ops.
+CREATE TABLE IF NOT EXISTS daily_batches (
+ company_id INTEGER NOT NULL REFERENCES companies(id),
+ request_id TEXT NOT NULL,
+ report_date TEXT NOT NULL,
+ digest TEXT NOT NULL,
+ op_ids TEXT NOT NULL,
+ created_by INTEGER REFERENCES users(id),
+ created_at TEXT NOT NULL DEFAULT (datetime('now')),
+ PRIMARY KEY(company_id,request_id)
+);
+CREATE INDEX IF NOT EXISTS idx_daily_batches_date ON daily_batches(company_id,report_date);

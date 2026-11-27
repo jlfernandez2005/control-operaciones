@@ -1,6 +1,6 @@
 {
   "name": "sisfia",
-  "version": "5.0.0",
+  "version": "5.2.0",
   "description": "SISFIA \u00b7 Sistema Financiero Administrativo",
   "type": "module",
   "main": "server/index.js",
@@ -16,7 +16,7 @@
     "db:seed": "node server/db.js --seed",
     "db:seed:full": "node server/seed-extended.js",
     "migrate:v2": "node scripts/migrate-v2-to-v3.js",
-    "test:static": "node --test tests/static.test.cjs tests/finance-static.test.cjs tests/budget-static.test.cjs tests/cash-reconcile.test.cjs tests/provider-directory.test.cjs tests/dashboard-taxonomy.test.cjs tests/report-all-groups.test.cjs tests/monthly-detail.test.cjs tests/reconciliation.test.cjs tests/sunat-payment.test.cjs tests/import-balance.test.cjs",
+    "test:static": "node --test tests/static.test.cjs tests/finance-static.test.cjs tests/budget-static.test.cjs tests/cash-reconcile.test.cjs tests/provider-directory.test.cjs tests/dashboard-taxonomy.test.cjs tests/report-all-groups.test.cjs tests/monthly-detail.test.cjs tests/reconciliation.test.cjs tests/sunat-payment.test.cjs tests/import-balance.test.cjs tests/navigation.test.cjs",
     "test:documents": "python3 tests/finance_documents_test.py",
     "test:smart": "python3 tests/smart_import_test.py",
     "test:adaptive": "python3 tests/adaptive_import_test.py",
@@ -26,7 +26,8 @@
     "test:dates": "node --test tests/date-reconcile.test.cjs",
     "test:payroll": "node --test tests/security-payroll.test.cjs && python3 tests/payroll_documents_test.py",
     "test:storage": "node --test tests/storage-security.test.cjs",
-    "test:erp": "node --test tests/erp.test.cjs"
+    "test:erp": "node --test tests/erp.test.cjs",
+    "test:daily": "node --test tests/daily.test.cjs && python3 tests/daily_documents_test.py"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",
