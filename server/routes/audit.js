@@ -17,7 +17,7 @@ r.get('/', async (req, res) => {
 
   const sql = `SELECT a.id, a.created_at, a.action, a.entity, a.entity_id, a.payload,
                       a.ip, a.ua, u.username, u.name AS user_name
-               FROM audit a LEFT JOIN users u ON u.id = a.user_id
+               FROM audit a LEFT JOIN users u ON u.id = a.user_id AND u.company_id=a.company_id
                WHERE ${where.join(' AND ')}
                ORDER BY a.id DESC LIMIT ? OFFSET ?`;
   const l=Number(limit), o=Number(offset);
@@ -28,14 +28,16 @@ r.get('/', async (req, res) => {
 });
 
 r.get('/export.csv', async (req, res) => {
+  if(!req.user.mfa||req.user.payrollUntil<=Date.now())return res.status(403).json({error:'Desbloquea Seguridad con contraseña y segundo factor para exportar auditoría.'});
   const rows = (await db.execute({sql:`SELECT a.id, a.created_at, u.username, a.action, a.entity, a.entity_id, a.ip, a.payload
-                           FROM audit a LEFT JOIN users u ON u.id = a.user_id
+                           FROM audit a LEFT JOIN users u ON u.id = a.user_id AND u.company_id=a.company_id
                            WHERE a.company_id = ? ORDER BY a.id DESC`,args:[req.user.cid]})).rows;
   const header = 'id,created_at,username,action,entity,entity_id,ip,payload\n';
   const body = rows.map(x => [x.id, x.created_at, x.username || '', x.action, x.entity, x.entity_id || '', x.ip || '', (x.payload || '')]
     .map(v => `"${String(v).replace(/^[\s]*[=+@-]|^[\t\r\n]/, m=>"'"+m).replace(/"/g, '""')}"`).join(',')).join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="auditoria.csv"');
+  await db.execute({sql:"INSERT INTO audit(company_id,user_id,action,entity,payload) VALUES(?,?,'export','audit',?)",args:[req.user.cid,req.user.uid,JSON.stringify({count:rows.length})]});
   res.send(header + body);
 });
 

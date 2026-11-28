@@ -1,3 +1,17 @@
+# SISFIA 5.2.2 — Operaciones diarias y reportes institucionales
+
+Corrección de arranque en Turso: se ignoran los comentarios SQL antes de separar instrucciones.
+
+[Guía de operaciones diarias y actualización](docs/SISFIA-5.2.0.md).
+
+# SISFIA 5.1.0 — Navegación ERP y seguridad (candidata a validación)
+
+[Guía de SISFIA 5.1.0 y alcance de la actualización](docs/SISFIA-5.1.0.md).
+
+**Antes de actualizar producción:** consulta [SISFIA 5.0: alcance, migración y validación](docs/SISFIA-5.0.md). Mantén la base Turso y las claves originales; respalda y prueba en una copia independiente.
+
+**Antes de cargar datos laborales reales:** lee [la guía de actualización](docs/PLANILLAS-4.2.md) y [la auditoría técnica](docs/AUDITORIA-SEGURIDAD-4.2.md). Configura la clave independiente y MFA. Las funcionalidades anteriores se conservan.
+
 # SISFIA 4.1.1 — Tesorería y cobranza
 
 Nuevo módulo **Bancos e ingresos**: [guía de uso y actualización](docs/TESORERIA-4.1.md). Se mantienen los módulos de 4.0.0 y anteriores.
@@ -108,3 +122,6 @@ Ver [guía de flujo de caja](docs/FLUJO-CAJA-4.0.md).
 
 ## Conciliación entre fechas
 Consulta [la guía de la versión 4.1.1](docs/CONCILIACION-FECHAS-4.1.1.md).
+
+## Seguridad 4.2.2
+Consulta [el procedimiento de mantenimiento](docs/SEGURIDAD-4.2.2.md) antes de actualizar o migrar datos. No cambies la clave original de planillas. El respaldo completo y la rotación se ejecutan fuera del servidor web.

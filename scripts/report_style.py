@@ -11,6 +11,8 @@ def stamp():return datetime.now(timezone(timedelta(hours=-5))).strftime('%d/%m/%
 def page_frame(c,d):
     w,h=d.pagesize; c.saveState()
     if LOGO.exists():c.drawImage(str(LOGO),35,h-62,width=145,height=45,preserveAspectRatio=True,anchor='w',mask='auto')
+    product=LOGO.parent/'sisfia-product.png'
+    if product.exists():c.drawImage(str(product),w/2-66,h-58,width=132,height=39,preserveAspectRatio=True,anchor='c',mask='auto')
     c.setFillColor(colors.HexColor(MUTED));c.setFont('Helvetica',8);c.drawRightString(w-35,h-30,'SISTEMA FINANCIERO ADMINISTRATIVO')
     c.drawRightString(w-35,h-43,'Reporte de gestión · PEN (S/)')
     c.setStrokeColor(colors.HexColor(TEAL));c.setLineWidth(.8);c.line(35,h-68,w-35,h-68);c.line(35,32,w-35,32)

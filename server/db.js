@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+import {periodTriggers} from './erp-core.js';
+import {schemaStatements} from './schema-statements.js';
 // On Render, do not silently fall back to ephemeral local storage.
 if ((process.env.RENDER==='true'||process.env.RENDER_SERVICE_ID||process.env.TURSO_DATABASE_URL||process.env.TURSO_AUTH_TOKEN) && (!process.env.TURSO_DATABASE_URL||!process.env.TURSO_AUTH_TOKEN)) throw new Error('Configura TURSO_DATABASE_URL y TURSO_AUTH_TOKEN antes de iniciar SISFIA.');
 const local = path.resolve(process.env.DB_PATH || './data/control.db');
@@ -11,8 +13,7 @@ if (!process.env.TURSO_DATABASE_URL) fs.mkdirSync(path.dirname(local),{recursive
 export const db = createClient({url:process.env.TURSO_DATABASE_URL || pathToFileURL(local).href,authToken:process.env.TURSO_AUTH_TOKEN});
 export async function initSchema(){
   const sql=fs.readFileSync(new URL('./schema.sql',import.meta.url),'utf8');
-  for(const stmt of sql.split(';').filter(s=>s.trim())) {
-    if(process.env.TURSO_DATABASE_URL && /PRAGMA journal_mode/i.test(stmt)) continue;
+  for(const stmt of schemaStatements(sql,{remote:!!process.env.TURSO_DATABASE_URL})) {
     await db.execute(stmt);
   }
   const cols=(await db.execute('PRAGMA table_info(ops)')).rows;
@@ -27,6 +28,7 @@ export async function initSchema(){
   }
   await db.execute('CREATE INDEX IF NOT EXISTS idx_ops_import_batch ON ops(company_id,import_batch)');
   await db.execute('CREATE INDEX IF NOT EXISTS idx_ops_match ON ops(company_id,date,amount,ruc,receipt)');
+  for(const trigger of periodTriggers()) await db.execute(trigger);
 }
 export async function seed(){
   const username=process.env.ADMIN_USER || 'admin', password=process.env.ADMIN_PASS;

@@ -15,7 +15,7 @@ const srt=L=>L.slice().sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:a.id-b.id);
 
 async function api(path, opts={}){
   const res=await fetch('/api'+path,{
-    credentials:'include',
+    credentials:'include',cache:'no-store',
     headers:{'Content-Type':'application/json',...(opts.headers||{})},
     ...opts,
     body:opts.body?JSON.stringify(opts.body):undefined

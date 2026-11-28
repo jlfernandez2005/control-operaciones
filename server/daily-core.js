@@ -1,0 +1,9 @@
+import {createHash} from 'node:crypto';
+const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toLowerCase();
+export const cents=v=>Math.round(Number(v)*100);
+export const hash=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
+export const fingerprint=r=>hash([r.date,norm(r.concept),cents(r.amount),norm(r.receipt),norm(r.ruc),norm(r.provider_name)]);
+export function duplicates(existing,rows){const known=new Map();for(const r of existing){const k=fingerprint(r);if(!known.has(k))known.set(k,[]);known.get(k).push(Number(r.id));}const seen=new Set(),out=[];rows.forEach((r,i)=>{const k=fingerprint(r);if(known.has(k)||seen.has(k))out.push({row:i+1,existing:known.get(k)||[],withinBatch:seen.has(k)});seen.add(k);});return out;}
+export function mask(v){const s=String(v??'');return s?'••••'+(s.length>4?s.slice(-4):''):'';}
+export function reportRows(rows,filters,full=false){const q=norm(filters.q),bank=norm(filters.bank),category=norm(filters.category),type=norm(filters.type),provider=norm(filters.provider);return rows.filter(r=>(!filters.status||r.status===filters.status)&&(!bank||norm(r.bank).includes(bank))&&(!category||norm(r.category).includes(category))&&(!type||norm(r.type).includes(type))&&(!provider||norm(r.provider_name).includes(provider))&&(!q||norm([r.concept,r.receipt,r.provider_name,r.order_number,r.category,r.bank,r.type].join(' ')).includes(q))).map(r=>({id:Number(r.id),date:r.date,concept:r.concept,receipt:r.receipt||'',cents:cents(r.amount),bank:r.bank||'',account:full?r.bank_account||'':mask(r.bank_account),provider:r.provider_name||'',ruc:full?r.ruc||'':mask(r.ruc),order:r.order_number||'',category:r.category||'',type:r.type||'',status:r.status}));}
+export function totals(rows){return rows.reduce((s,r)=>{s.count++;s.total+=r.cents;if(r.status==='Pagado')s.paid+=r.cents;else s.pending+=r.cents;return s;},{count:0,total:0,paid:0,pending:0});}

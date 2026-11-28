@@ -1,0 +1,6 @@
+import 'dotenv/config';import {db} from '../server/db.js';import {protectStorage} from '../server/storage-maintenance.js';
+const args=process.argv.slice(2),apply=args.includes('--apply'),rotation=args.includes('--rotate');
+if(args.some(a=>!['--apply','--rotate'].includes(a)))throw Error('Uso: node scripts/protect-storage.js [--apply] [--rotate]');
+if(rotation&&!process.env.SISFIA_NEXT_ENCRYPTION_KEY)throw Error('Configura SISFIA_NEXT_ENCRYPTION_KEY para rotar.');
+if(apply&&process.env.SISFIA_MAINTENANCE_CONFIRMED!=='YES')throw Error('Detén el servicio, confirma respaldo y restauración, y define SISFIA_MAINTENANCE_CONFIRMED=YES.');
+let tx;try{tx=await db.transaction(apply?'write':'read');const counts=await protectStorage(tx,{apply,nextKey:rotation?process.env.SISFIA_NEXT_ENCRYPTION_KEY:null});if(apply)await tx.commit();else await tx.rollback();console.log(JSON.stringify({applied:apply,counts,rotation}));if(apply&&rotation)console.log('Antes de iniciar SISFIA, configura SISFIA_ENCRYPTION_KEY con la nueva clave. Conserva PAYROLL_DATA_KEY original y las claves anteriores para respaldos.');}catch(e){if(tx)try{await tx.rollback()}catch{}console.error('Operación interrumpida. No publiques claves ni registros. Revisa la configuración y el estado del respaldo.');process.exitCode=1;}finally{if(tx)tx.close();db.close();}
